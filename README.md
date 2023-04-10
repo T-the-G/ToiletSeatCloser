@@ -56,12 +56,13 @@ Note that the screw hole diameters on electronic components may vary between man
 
 | Item        | Quantity  | Description   | 
 | :---        | :----       | :---        |
+| Suction cup | 8           | For attaching the backplates to a wall, 4cm diameter, M4\*10 thread  |
 | M4\*35      | 3           | For holding the 28BYJ stepper motor and epicyclic gearbox in place  |
-| M4 washers  | 4           | To space out the M4 screws holding the stepper motor and gearbox in place |
+| M4 washer   | 4           | To space out the M4 screws holding the stepper motor and gearbox in place |
 | M3\*25      | 4           | For connecting the front and rear axle mounts to the backplate      |
 | M3\*18      | 4           | For connecting the epicyclic ring gear base to the backplate        |
 | M3\*16      | 4           | For connecting the front and rear axle mounts to the backplate      |
-| M3\*6       | 2           | For connecting the small breadboard to the electronics backplate via the mounting brackets |
+| M3\*6       | 3           | For connecting the breadboards to the backplates via the mounting brackets |
 | M3\*4       | 5           | For mounting the ULN2003 driver board and KY-040 rotary encoder     |
 | M2\*4       | 4           | For mounting the SSD1300 OLED display to the electronics backplate  |
 | M1.4\*6     | 4           | For mounting the HC-SR04 ultrasonic distance sensor to the electronics backplate |
