@@ -1,7 +1,7 @@
 # Toilet Seat Closer
 Lever that closes the toilet seat
 
-##### Table of Contents  
+# Table of Contents  
 
 - [Bill of Materials](#bill-of-materials)  
   - [3D-printed parts](#3d-printed-parts)  
@@ -10,6 +10,8 @@ Lever that closes the toilet seat
 
 
 # Bill of Materials
+
+This bill of materials is based on components I had lying around. It is perfectly possible to use different components. For example, one could use a voltage regulator module instead of the DC-DC stepdown converter (or power the whole thing from a USB power supply plugged into the wall), or a photoresistor instead of a phototransistor.
 
 ## 3D-printed parts
 
