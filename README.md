@@ -42,6 +42,7 @@ Lever that closes the toilet seat
 | SSD1300 OLED display        | 1     | Displays information about the device status, 0.96 inch, 128 x 64 resolution |
 | 3S LiPo battery             | 1     | Rated at 52Ah @ 11.1V (57.72Wh) |
 | LiPo battery charger        | 1     | Used to charge the LiPo battery |
+| DC-DC buck stepdown module  | 1     | Provides steady voltage for the RPi Pico via USB, input 6-20V, output 5V 3A |
 | Mini breadboard             | 1     | Used as a power supply, has 170 pinholes, measures approximately 46\*35\*9mm |
 | Small breadboard            | 1     | Used as a motherboard, has 400 pinholes, measures approximately 82\*54\*9mm |
 | 22AWG wires                 | 1     | For connecting components on the breadboards |
