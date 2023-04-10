@@ -6,12 +6,12 @@ Lever that closes the toilet seat
 - [Bill of Materials](#bill-of-materials)  
   - [3D-printed parts](#3d-printed-parts)  
   - [Electronics](#electronics)
-  - [Fasteners](#fasteners)
+  - [Fasteners](#fasteners-and-other-mechanical-parts)
 
 
 # Bill of Materials
 
-This bill of materials is based on components I had lying around. It is perfectly possible to use different components. For example, one could use a voltage regulator module instead of the DC-DC stepdown converter (or power the whole thing from a USB power supply plugged into the wall), or a photoresistor instead of a phototransistor.
+This bill of materials is based on components I had lying around. It is perfectly possible to use different components. For example, one could use a photoresistor instead of a phototransistor, or a voltage regulator module instead of the DC-DC stepdown converter (or power the whole thing from a USB power supply plugged into the wall).
 
 ## 3D-printed parts
 
@@ -48,14 +48,15 @@ This bill of materials is based on components I had lying around. It is perfectl
 | Mini breadboard             | 1     | Used as a power supply, has 170 pinholes, measures approximately 46\*35\*9mm |
 | Small breadboard            | 1     | Used as a motherboard, has 400 pinholes, measures approximately 82\*54\*9mm |
 | 22AWG wires                 | 1     | For connecting components on the breadboards |
+| Breadboard pin headers      | 2     | For connecting the DC-DC stepdown module to the mini breadboard |
 | 680kΩ resistor              | 2     | Used in the 11.1V-to-5V and 11.1V-to-3V voltage dividers |
 | 470kΩ resistor              | 1     | Used in the 11.1V-to-5V voltage divider |
 | 220kΩ resistor              | 1     | Used in the 11.1V-to-3V voltage divider |
 | 100kΩ resistor              | 1     | Used for the SFH 300 phototransistor |
 
-## Fasteners
+## Fasteners and other mechanical parts
 
-Note that the screw hole diameters on electronic components may vary between manufacturers.
+Note that the screw hole position/diameter on electronic components may vary between manufacturers. The relevant modifications can be made in front_axle_mount.scad (for the ULN2003 based driver board), and in electronics_backplate.scad (for the remaining components).
 
 | Item        | Quantity  | Description   | 
 | :---        | :----       | :---        |
@@ -69,3 +70,4 @@ Note that the screw hole diameters on electronic components may vary between man
 | M3\*4       | 5           | For mounting the ULN2003 driver board and KY-040 rotary encoder     |
 | M2\*4       | 4           | For mounting the SSD1300 OLED display to the electronics backplate  |
 | M1.4\*6     | 4           | For mounting the HC-SR04 ultrasonic distance sensor to the electronics backplate |
+| Spring      | 1           | For pushing the axle back into place after manual adjustment, diameter 7mm, length 12.5mm |
