@@ -6,7 +6,7 @@ Lever that closes the toilet seat
 - [Bill of Materials](#bill-of-materials)  
   - [3D-printed parts](#3d-printed-parts)  
   - [Electronics](#electronics)
-  - [Fasteners](#fasteners-and-other-mechanical-parts)
+  - [Fasteners and other mechanical parts](#fasteners-and-other-mechanical-parts)
 
 
 # Bill of Materials
@@ -71,3 +71,4 @@ Note that the screw hole position/diameter on electronic components may vary bet
 | M2\*4       | 4           | For mounting the SSD1300 OLED display to the electronics backplate  |
 | M1.4\*6     | 4           | For mounting the HC-SR04 ultrasonic distance sensor to the electronics backplate |
 | Spring      | 1           | For pushing the axle back into place after manual adjustment, diameter 7mm, length 12.5mm |
+| Cable sleeve  | 1         | Woven sheath that wraps around a 5-10mm bundle of cables, length approximately 50cm |
