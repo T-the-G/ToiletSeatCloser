@@ -20,7 +20,7 @@ polling_interval_standby    = 5         # seconds between polling during standby
 previous_distance           = 165       # initialise typical distance (cm) measured when nobody is in the restroom
 steps_per_revolution        = 2048      # stepper motor steps per revolution
 step_sleep_close            = 0.003     # seconds between stepper motor steps during lid close action
-step_sleep_open             = 0.002     # seconds between stepper motor steps during lid open action
+step_sleep_retract             = 0.002     # seconds between stepper motor steps during retract action
 
 ###################
 #   Define pins   #
@@ -163,7 +163,7 @@ def motor_cleanup():
     for pin in range(0, len(motor_pins)):
         motor_pins[pin].low()
 
-def motor_spin(revolutions=1, motor_direction=False, step_sleep=step_sleep_open):
+def motor_spin(revolutions=1, motor_direction=False, step_sleep=step_sleep_retract):
     global button_pushed, motor_retract_revolutions
     motor_retract_revolutions = 0
     i = 0
@@ -238,6 +238,7 @@ def main():
                 # Dewit
                 print("CLOSING THE SEAT WOOOO")
                 utime.sleep(5)
+                print("Switching back to AUTO mode")
                 break
                 #presence_detected = detect_presence()
                 #time_since_presence = 0
