@@ -12,15 +12,15 @@ alloc_emergency_exception_buf(100)
 ####################################
 # Variables that need callibration #
 ####################################
-action_after_seconds        = 60       # seconds to wait after presence is no longer detected to close the lid
+action_after_seconds        = 60       # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
 brightness_threshold        = 25000      # phototransistor brightness threshold for detecting restroom light
 motion_threshold            = 5         # difference in distance (cm) between successive measurements to detect motion 
 polling_interval_presence   = 1         # seconds between polling when presence has been detected
 polling_interval_standby    = 5         # seconds between polling during standby
+previous_distance           = 165       # typical distance (cm) measured when nobody is in the restroom
 step_count                  = 2048      # stepper motor steps per revolution
 step_sleep_close            = 0.003     # seconds between stepper motor steps during lid close action
 step_sleep_open             = 0.002     # seconds between stepper motor steps during lid open action
-previous_distance           = 165       # typical distance (cm) measured when nobody is in the restroom
 
 ###################
 #   Define pins   #
@@ -124,16 +124,17 @@ def detect_presence():
     if brightness_detected or motion_detected:
         presence_detected = True
     previous_distance = distance
+    print("Presence detected: ", presence_detected)
     return presence_detected #, distance, brightness
 
-def show_something(pin):
+def show_something():
     write20.text("Hello", 15, 0)
     write20.text("World!", 15, 20)
     oled.show()
 
 def measure_brightness():
-    reading = pin_sfh300_adc.read_u16()
-    return(reading)
+    brightness = pin_sfh300_adc.read_u16()
+    return(brightness)
 
 def measure_distance():
     pin_hcsr04_trigger.low()
@@ -187,7 +188,7 @@ def main():
         # initialise
         motor_cleanup()
         oled.poweroff()
-        presence_detected   = False
+        presence_detected = False
         # AUTO mode
         if not mode_debug and not mode_manual:
             presence_detected = detect_presence()
@@ -195,7 +196,7 @@ def main():
                 if mode_switch:
                     mode_switch = False
                     break
-                presence_detected = False
+                #presence_detected = False
                 show_something() # DISPLAY SOMETHING NICE
                 utime.sleep(polling_interval_presence)
                 presence_detected = detect_presence()
@@ -213,6 +214,26 @@ def main():
                     time_since_presence += polling_interval_presence
                     presence_detected = detect_presence()
             utime.sleep(polling_interval_standby)
+        # MANUAL mode
+        if not mode_debug and mode_manual:
+            while True:
+                if mode_switch:
+                    mode_switch = False
+                    break
+                # Dewit
+                print("CLOSING THE SEAT WOOOO")
+                motor_cleanup()
+                oled.poweroff()
+                write15.text("MANUAL mode", 0, 0)
+        # DEBUG mode
+        if mode_debug and not mode_manual:
+            while True:
+                if mode_switch:
+                    mode_switch = False
+                    break
+                motor_cleanup()
+                oled.poweroff()
+                write15.text("DEBUG mode", 0, 0)
 
 ########################
 #   Setup interrupts   #
@@ -221,12 +242,13 @@ interrupt_clk = Pin(pin_ky040_button, Pin.IN, Pin.PULL_DOWN)
 interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
 #print("hello world")
 
-while True:
-    presence = detect_presence()
-    #print("The distance from object is ", distance, "cm")
-    #print("The brightness is ", brightness)
-    print("Presence detected: ", presence)
-    #motor_spin()
-    #motor_cleanup()
-    utime.sleep(1)
+#while True:
+#    presence = detect_presence()
+#    #print("The distance from object is ", distance, "cm")
+#    #print("The brightness is ", brightness)
+#    print("Presence detected: ", presence)
+#    #motor_spin()
+#    #motor_cleanup()
+#    utime.sleep(1)
 
+main()
