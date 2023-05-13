@@ -5,10 +5,9 @@ import utime
 from ssd1306 import SSD1306_I2C, framebuf
 from oled import Write, SSD1306_I2C
 from oled.fonts import ubuntu_mono_15, ubuntu_mono_20
-# from micropython import alloc_emergency_exception_buf
-# alloc_emergency_exception_buf(100)
-import micropython
-micropython.alloc_emergency_exception_buf(100)
+# handle interrupts
+from micropython import alloc_emergency_exception_buf, schedule
+alloc_emergency_exception_buf(100)
 
 ####################################
 # Variables that need callibration #
@@ -79,12 +78,6 @@ motor_pins = [pin_motor_1, pin_motor_2, pin_motor_3, pin_motor_4]
 #################
 #   Functions   #
 #################
-class MyExceptionClass(Exception):
-    def __init__(self):
-        pass
-
-MyException=MyExceptionClass()
-
 
 button_pushed = False
 def button_interrupt(pin):
@@ -137,30 +130,25 @@ def motor_cleanup():
         motor_pins[pin].low()
 
 def motor_spin():
-    try:
-        i = 0
-        motor_step_counter = 0
-        motor_cleanup()
-        for i in range(step_count):
-            for pin in range(0, len(motor_pins)):
-                motor_pins[pin].value(step_sequence[motor_step_counter][pin])
-            if motor_direction==True:
-                motor_step_counter = (motor_step_counter - 1) % 4
-            elif motor_direction==False:
-                motor_step_counter = (motor_step_counter + 1) % 4
-            else: # defensive programming
-                print( "uh oh... direction should *always* be either True or False" )
-                motor_cleanup()
-                exit( 1 )
-            #if button_pushed:
-            #    motor_cleanup()
-            #    print(i)
-            #    break
-            utime.sleep( step_sleep_open )
-    except MyException as e:
-        motor_cleanup()
-        print("exception has occured")
-        exit( 1 )
+    i = 0
+    motor_step_counter = 0
+    motor_cleanup()
+    for i in range(step_count):
+        for pin in range(0, len(motor_pins)):
+            motor_pins[pin].value(step_sequence[motor_step_counter][pin])
+        if motor_direction==True:
+            motor_step_counter = (motor_step_counter - 1) % 4
+        elif motor_direction==False:
+            motor_step_counter = (motor_step_counter + 1) % 4
+        else: # defensive programming
+            print( "uh oh... direction should *always* be either True or False" )
+            motor_cleanup()
+            exit( 1 )
+        if button_pushed:
+            motor_cleanup()
+            print(i)
+            break
+        utime.sleep( step_sleep_open )
 
 
 def main():
