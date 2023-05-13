@@ -5,6 +5,9 @@ import utime
 from ssd1306 import SSD1306_I2C, framebuf
 from oled import Write, SSD1306_I2C
 from oled.fonts import ubuntu_mono_15, ubuntu_mono_20
+# from micropython import alloc_emergency_exception_buf
+# alloc_emergency_exception_buf(100)
+import micropython
 micropython.alloc_emergency_exception_buf(100)
 
 ####################################
@@ -87,7 +90,7 @@ button_pushed = False
 def button_interrupt(pin):
     global button_pushed
     button_pushed = True
-    raise MyException
+    raise MyException()
 
 def detect_presence():
     global previous_distance
@@ -97,7 +100,7 @@ def detect_presence():
     brightness = measure_brightness()
     if brightness > brightness_threshold:
         brightness_detected = True
-    distance = measure_distance():
+    distance = measure_distance()
     if distance > previous_distance + motion_threshold or distance < previous_distance - motion_threshold:
         motion_detected = True
     if brightness_detected or motion_detected:
@@ -154,10 +157,10 @@ def motor_spin():
             #    print(i)
             #    break
             utime.sleep( step_sleep_open )
-        except MyException as e:
-            motor_cleanup()
-            print("exception has occured")
-            exit( 1 )
+    except MyException as e:
+        motor_cleanup()
+        print("exception has occured")
+        exit( 1 )
 
 
 def main():
@@ -168,12 +171,12 @@ def main():
     while True:
         # AUTO mode
         if not mode_debug and not mode_manual:
-            presence_detected = detect_presence():
+            presence_detected = detect_presence()
             while presence_detected:
                 presence_detected = False
                 # DISPLAY SOMETHING NICE
                 utime.sleep(polling_interval_presence)
-                presence_detected = detect_presence():
+                presence_detected = detect_presence()
                 time_since_presence = 0
                 while not presence_detected:
                     if time_since_presence >= action_after_seconds:
