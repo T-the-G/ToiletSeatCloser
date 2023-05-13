@@ -17,8 +17,8 @@ brightness_threshold        = 25000      # phototransistor brightness threshold 
 motion_threshold            = 5         # difference in distance (cm) between successive measurements to detect motion 
 polling_interval_presence   = 1         # seconds between polling when presence has been detected
 polling_interval_standby    = 5         # seconds between polling during standby
-previous_distance           = 165       # typical distance (cm) measured when nobody is in the restroom
-step_count                  = 2048      # stepper motor steps per revolution
+previous_distance           = 165       # initialise typical distance (cm) measured when nobody is in the restroom
+steps_per_revolution        = 2048      # stepper motor steps per revolution
 step_sleep_close            = 0.003     # seconds between stepper motor steps during lid close action
 step_sleep_open             = 0.002     # seconds between stepper motor steps during lid open action
 
@@ -51,9 +51,9 @@ pin_motor_4         = Pin(21, Pin.OUT)
 mode_debug  = False
 mode_manual = False
 
-##################
-# Setup the OLED #
-##################
+######################
+#   Setup the OLED   #
+######################
 oled_width=128
 oled_height= 64
 # the first argument of I2C is the set of i2c pins which should be initialised
@@ -66,8 +66,7 @@ write20 = Write(oled, ubuntu_mono_20)
 ###########################
 # Setup the stepper motor #
 ###########################
-#motor_direction = False # True for clockwise, False for counter-clockwise
-motor_retract_steps = 0 # If the action is interrupted, reverse the motor by this amount of steps
+motor_retract_revolutions = 0 # If the action is interrupted, reverse the motor by this amount of revolutions
 # defining stepper motor sequence
 step_sequence = [[1,0,0,0],
                  [0,1,0,0],
@@ -104,12 +103,11 @@ def button_interrupt(pin):
     # switch from DEBUG to AUTO
     elif mode_debug and not mode_manual:
         mode_debug = False
-        mode_manual = False
         mode_switch = True
     # Defensive programming
     else:
         motor_cleanup()
-        write15.text("State machine error")
+        write15.text("State machine error", 0, 0)
         oled.show()
         print("State machine error")
         exit(1)
@@ -132,10 +130,10 @@ def detect_presence():
     if brightness_detected or motion_detected:
         presence_detected = True
     previous_distance = distance
-    print("Presence detected: ", presence_detected)
-    print("The distance from object is ", distance, "cm")
-    print("The brightness is ", brightness)
-    return presence_detected #, distance, brightness
+    #print("Presence detected: ", presence_detected)
+    #print("The distance from object is ", distance, "cm")
+    #print("The brightness is ", brightness)
+    return presence_detected
 
 def show_something():
     write20.text("Hello", 15, 0)
@@ -157,7 +155,7 @@ def measure_distance():
     while pin_hcsr04_echo.value() == 1:
         signalon = utime.ticks_us()
     timepassed = signalon - signaloff
-    distance = timepassed * 0.01715 # (0.0343 cm per us) / 2 = 0.01715
+    distance = timepassed * 0.01715 # (0.0343 cm per us)/2 = 0.01715
     #print("The distance from object is ", distance, "cm")
     return(distance)
 
@@ -166,13 +164,12 @@ def motor_cleanup():
         motor_pins[pin].low()
 
 def motor_spin(revolutions=1, motor_direction=False, step_sleep=step_sleep_open):
-    global button_pushed
-    global motor_retract_steps
-    motor_retract_steps = 0
+    global button_pushed, motor_retract_revolutions
+    motor_retract_revolutions = 0
     i = 0
     motor_step_counter = 0
     motor_cleanup()
-    for i in range(revolutions*step_count):
+    for i in range(revolutions*steps_per_revolution):
         for pin in range(0, len(motor_pins)):
             motor_pins[pin].value(step_sequence[motor_step_counter][pin])
         if motor_direction==True:
@@ -185,22 +182,20 @@ def motor_spin(revolutions=1, motor_direction=False, step_sleep=step_sleep_open)
             exit(1)
         if button_pushed:
             motor_cleanup()
-            motor_retract_steps = i
+            motor_retract_revolutions = i/steps_per_revolution
             button_pushed = False
             break
         utime.sleep(step_sleep)
 
 
 def main():
-    global mode_debug
-    global mode_manual
-    global mode_switch
-    #perform_action      = False
+    global mode_debug, mode_manual, mode_switch
     while True:
         # initialise
         motor_cleanup()
         clear_screen()
         presence_detected = False
+
         # AUTO mode
         if not mode_debug and not mode_manual:
             presence_detected = detect_presence()
@@ -209,7 +204,6 @@ def main():
                     clear_screen()
                     mode_switch = False
                     break
-                #presence_detected = False
                 show_something() # DISPLAY SOMETHING NICE
                 utime.sleep(polling_interval_presence)
                 presence_detected = detect_presence()
@@ -226,7 +220,9 @@ def main():
                     utime.sleep(polling_interval_presence)
                     time_since_presence += polling_interval_presence
                     presence_detected = detect_presence()
-            utime.sleep(polling_interval_standby)
+            if not mode_switch:
+                utime.sleep(polling_interval_standby)
+
         # MANUAL mode
         if not mode_debug and mode_manual:
             while True:
@@ -241,20 +237,23 @@ def main():
                 oled.show()
                 # Dewit
                 print("CLOSING THE SEAT WOOOO")
-                presence_detected = detect_presence()
-                time_since_presence = 0
-                while not presence_detected:
-                    if mode_switch:
-                        break
-                    if time_since_presence >= action_after_seconds:
-                        print("Switching back to AUTO mode")
-                        clear_screen()
-                        mode_manual = False
-                        mode_switch = True
-                        break
-                    utime.sleep(polling_interval_presence)
-                    time_since_presence += polling_interval_presence
-                    presence_detected = detect_presence()
+                utime.sleep(5)
+                break
+                #presence_detected = detect_presence()
+                #time_since_presence = 0
+                #while not presence_detected:
+                #    if mode_switch:
+                #        break
+                #    if time_since_presence >= action_after_seconds:
+                #        print("Switching back to AUTO mode")
+                #        clear_screen()
+                #        mode_manual = False
+                #        mode_switch = True
+                #        break
+                #    utime.sleep(polling_interval_presence)
+                #    time_since_presence += polling_interval_presence
+                #    presence_detected = detect_presence()
+
         # DEBUG mode
         if mode_debug and not mode_manual:
             while True:
@@ -286,8 +285,10 @@ def main():
 ########################
 interrupt_clk = Pin(pin_ky040_button, Pin.IN, Pin.PULL_DOWN)
 interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
-#print("hello world")
 
+###############
+#   Execute   #
+###############
 #while True:
 #    presence = detect_presence()
 #    #print("The distance from object is ", distance, "cm")
