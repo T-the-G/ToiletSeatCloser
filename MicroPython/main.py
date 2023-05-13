@@ -13,7 +13,7 @@ alloc_emergency_exception_buf(100)
 # Variables that need callibration #
 ####################################
 action_after_seconds        = 600       # seconds to wait after presence is no longer detected to close the lid
-brightness_threshold        = 5000      # phototransistor brightness threshold for detecting restroom light
+brightness_threshold        = 25000      # phototransistor brightness threshold for detecting restroom light
 motion_threshold            = 5         # difference in distance (cm) between successive measurements to detect motion 
 polling_interval_presence   = 1         # seconds between polling when presence has been detected
 polling_interval_standby    = 5         # seconds between polling during standby
@@ -83,7 +83,6 @@ button_pushed = False
 def button_interrupt(pin):
     global button_pushed
     button_pushed = True
-    raise MyException()
 
 def detect_presence():
     global previous_distance
@@ -99,7 +98,7 @@ def detect_presence():
     if brightness_detected or motion_detected:
         presence_detected = True
     previous_distance = distance
-    return(presence_detected)
+    return presence_detected, distance, brightness
 
 def show_something(pin):
     write20.text("Hello", 15, 0)
@@ -184,11 +183,11 @@ interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
 #print("hello world")
 
 while True:
-    distance = measure_distance()
+    presence, distance, brightness = detect_presence()
     print("The distance from object is ", distance, "cm")
-    reading = measure_brightness()
-    print("The brightness is ", reading)
-    motor_spin()
-    motor_cleanup()
-    utime.sleep(2)
+    print("The brightness is ", brightness)
+    print("Presence detected: ", presence)
+    #motor_spin()
+    #motor_cleanup()
+    utime.sleep(1)
 
