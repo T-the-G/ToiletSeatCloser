@@ -82,12 +82,16 @@ motor_pins = [pin_motor_1, pin_motor_2, pin_motor_3, pin_motor_4]
 
 button_pushed   = False # used to stop the motor if action is in progress
 mode_switch     = False # used in the main function to break out of loops
+last_button_time = 0    # last time the button was pushed
 def button_interrupt(pin):
-    global mode_debug
-    global mode_manual
-    global mode_switch
-    global button_pushed
+    global button_pushed, last_button_time, mode_debug, mode_manual, mode_switch
+    new_button_time = utime.ticks_ms()
+    if (new_button_time - last_button_time) < 200:
+        return
+    else:
+        last_button_time = new_button_time
     button_pushed = True
+    print("BUTTON PUSHED WOOOOOOO")
     # switch from AUTO to MANUAL
     if not mode_debug and not mode_manual:
         mode_manual = True
@@ -109,6 +113,10 @@ def button_interrupt(pin):
         oled.show()
         print("State machine error")
         exit(1)
+        
+def clear_screen():
+    oled.fill(0)
+    oled.show()
 
 def detect_presence():
     global previous_distance
@@ -125,6 +133,8 @@ def detect_presence():
         presence_detected = True
     previous_distance = distance
     print("Presence detected: ", presence_detected)
+    print("The distance from object is ", distance, "cm")
+    print("The brightness is ", brightness)
     return presence_detected #, distance, brightness
 
 def show_something():
@@ -182,18 +192,21 @@ def motor_spin(revolutions=1, motor_direction=False, step_sleep=step_sleep_open)
 
 
 def main():
+    global mode_debug
+    global mode_manual
     global mode_switch
     #perform_action      = False
     while True:
         # initialise
         motor_cleanup()
-        oled.poweroff()
+        clear_screen()
         presence_detected = False
         # AUTO mode
         if not mode_debug and not mode_manual:
             presence_detected = detect_presence()
             while presence_detected:
                 if mode_switch:
+                    clear_screen()
                     mode_switch = False
                     break
                 #presence_detected = False
@@ -218,22 +231,55 @@ def main():
         if not mode_debug and mode_manual:
             while True:
                 if mode_switch:
+                    clear_screen()
                     mode_switch = False
                     break
+                # initialise
+                motor_cleanup()
+                oled.fill(0)
+                write15.text("MANUAL mode", 0, 0)
+                oled.show()
                 # Dewit
                 print("CLOSING THE SEAT WOOOO")
-                motor_cleanup()
-                oled.poweroff()
-                write15.text("MANUAL mode", 0, 0)
+                presence_detected = detect_presence()
+                time_since_presence = 0
+                while not presence_detected:
+                    if mode_switch:
+                        break
+                    if time_since_presence >= action_after_seconds:
+                        print("Switching back to AUTO mode")
+                        clear_screen()
+                        mode_manual = False
+                        mode_switch = True
+                        break
+                    utime.sleep(polling_interval_presence)
+                    time_since_presence += polling_interval_presence
+                    presence_detected = detect_presence()
         # DEBUG mode
         if mode_debug and not mode_manual:
             while True:
                 if mode_switch:
+                    clear_screen()
                     mode_switch = False
                     break
+                # initialise
                 motor_cleanup()
-                oled.poweroff()
+                clear_screen()
                 write15.text("DEBUG mode", 0, 0)
+                oled.show()
+                presence_detected = detect_presence()
+                time_since_presence = 0
+                while not presence_detected:
+                    if mode_switch:
+                        break
+                    if time_since_presence >= action_after_seconds:
+                        print("Switching back to AUTO mode")
+                        mode_debug = False
+                        mode_switch = True
+                        break
+                    utime.sleep(polling_interval_presence)
+                    time_since_presence += polling_interval_presence
+                    presence_detected = detect_presence()
 
 ########################
 #   Setup interrupts   #
@@ -252,3 +298,4 @@ interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
 #    utime.sleep(1)
 
 main()
+#show_something()
