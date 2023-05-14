@@ -13,7 +13,7 @@ alloc_emergency_exception_buf(100)
 # Variables that need callibration #
 ####################################
 action_after_seconds        = 60       # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
-brightness_threshold        = 40000      # phototransistor brightness threshold for detecting restroom light
+brightness_threshold        = 50        # phototransistor brightness (%) threshold for detecting restroom light
 motion_threshold            = 5         # difference in distance (cm) between successive measurements to detect motion 
 polling_interval_presence   = 1         # seconds between polling when presence has been detected
 polling_interval_standby    = 5         # seconds between polling during standby
@@ -54,11 +54,11 @@ mode_manual = False
 ######################
 #   Setup the OLED   #
 ######################
-oled_width=128
-oled_height= 64
+oled_width = 128
+oled_height = 64
 # the first argument of I2C is the set of i2c pins which should be initialised
-i2c=I2C(0,scl=pin_oled_scl,sda=pin_oled_sda,freq=200000)
-oled = SSD1306_I2C(oled_width,oled_height,i2c)
+i2c=I2C(0, scl=pin_oled_scl, sda=pin_oled_sda, freq=200000)
+oled = SSD1306_I2C(oled_width, oled_height, i2c)
 # fonts
 write15 = Write(oled, ubuntu_mono_15)
 write20 = Write(oled, ubuntu_mono_20)
@@ -80,12 +80,12 @@ class lightbulb_icon:
         }
 lightbulb = Write(oled, lightbulb_icon)
 
-# Ruler icon
-class ruler_icon:
-    _FONT = {
-        'ruler': [16, 4291035135, 4278255615, 4228120575, 4026732543, 4026545151, 4227859455, 4278193983, 4290773055, 4293918915, 4294705152, 4294901760, 4294950915, 4294963215, 4294966335, 4294967295],
-        }
-ruler = Write(oled, ruler_icon)
+## Ruler icon
+#class ruler_icon:
+#    _FONT = {
+#        'ruler': [16, 4291035135, 4278255615, 4228120575, 4026732543, 4026545151, 4227859455, 4278193983, 4290773055, 4293918915, 4294705152, 4294901760, 4294950915, 4294963215, 4294966335, 4294967295],
+#        }
+#ruler = Write(oled, ruler_icon)
 
 # Horizontal arrows icon (might look better than the ruler icon)
 class horizontal_arrows_icon:
@@ -94,11 +94,18 @@ class horizontal_arrows_icon:
         }
 arrows = Write(oled, horizontal_arrows_icon)
 
+## test static icons
+#oled.fill(0)
+#oled.contrast(0)    # dim
+#lightbulb.char('lightbulb', 50, 0)
+##ruler.char('ruler', 0, 0)
+#arrows.char('arrows-alt-h', 100, 0)
+#oled.show()
+
 ###########################
 # Setup the stepper motor #
 ###########################
 motor_retract_revolutions = 0 # If the action is interrupted, reverse the motor by this amount of revolutions
-# defining stepper motor sequence
 step_sequence = [[1,0,0,0],
                  [0,1,0,0],
                  [0,0,1,0],
@@ -166,13 +173,41 @@ def detect_presence():
     print("The brightness is ", brightness)
     return presence_detected
 
-def show_something():
-    write20.text("Hello", 15, 0)
-    write20.text("World!", 15, 20)
+def draw_status_bar(): # display stuff at the top of the oled screen
+    #global mode_debug, mode_manual
+    battery_percentage = measure_battery()
+    select_battery_icon = get_battery_icon(battery_percentage)
+    battery.text(select_battery_icon, 108, 0)
+    # DEBUG mode shows sensor output
+    if mode_debug and not mode_manual:
+        brightness = measure_brightness()
+        oled.text(brightness "%", 15, 0)
+        lightbulb.char('lightbulb', 0, 0)
+        distance = measure_distance()
+        oled.text(brightness "cm", 55, 0)
+        arrows.char('arrows-alt-h', 40, 0)
     oled.show()
 
+def get_battery_icon(battery_percentage):
+    # based on table at https://blog.ampow.com/lipo-voltage-chart/
+    if battery_percentage >= 95:
+        select_battery_icon = str(5)
+    elif battery_percentage >= 75:
+        select_battery_icon = str(4)
+    elif battery_percentage >= 55:
+        select_battery_icon = str(3)
+    elif battery_percentage >= 35:
+        select_battery_icon = str(2)
+    else:
+        select_battery_icon = str(1)
+    return select_battery_icon
+
+def measure_battery():
+    battery_percentage=100
+    return battery_percentage
+
 def measure_brightness():
-    brightness = pin_sfh300_adc.read_u16()
+    brightness = pin_sfh300_adc.read_u16() * 0.00152590218 # 100%/65535 = 0.00152590218
     return(brightness)
 
 def measure_distance():
@@ -236,6 +271,7 @@ def main():
                     mode_switch = False
                     break
                 show_something() # DISPLAY SOMETHING NICE
+                draw_status_bar()
                 utime.sleep(polling_interval_presence)
                 presence_detected = detect_presence()
                 time_since_presence = 0
@@ -267,6 +303,7 @@ def main():
                 write15.text("MANUAL mode", 0, 0)
                 oled.show()
                 # Dewit
+                draw_status_bar()
                 print("CLOSING THE SEAT WOOOO")
                 utime.sleep(5)
                 print("Switching back to AUTO mode")
@@ -297,8 +334,8 @@ def main():
                 # initialise
                 motor_cleanup()
                 clear_screen()
-                write15.text("DEBUG mode", 0, 0)
-                oled.show()
+                write15.text("DEBUG mode", 0, 15)
+                draw_status_bar()
                 presence_detected = detect_presence()
                 time_since_presence = 0
                 while not presence_detected:
@@ -312,6 +349,12 @@ def main():
                     utime.sleep(polling_interval_presence)
                     time_since_presence += polling_interval_presence
                     presence_detected = detect_presence()
+                utime.sleep(polling_interval_presence)
+
+def show_something():
+    write20.text("Hello", 15, 15)
+    write20.text("World!", 15, 35)
+    oled.show()
 
 ########################
 #   Setup interrupts   #
