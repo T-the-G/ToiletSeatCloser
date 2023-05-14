@@ -3,8 +3,8 @@ from machine import Pin, I2C, ADC
 import utime
 # SSD1300 OLED display
 from ssd1306 import SSD1306_I2C, framebuf
-from oled import Write, SSD1306_I2C
-from oled.fonts import ubuntu_mono_15, ubuntu_mono_20
+from oled import Write, GFX, SSD1306_I2C
+from oled.fonts import ubuntu_mono_15, ubuntu_mono_20, ubuntu_condensed_12
 # handle interrupts
 from micropython import alloc_emergency_exception_buf, schedule
 alloc_emergency_exception_buf(100)
@@ -57,9 +57,11 @@ mode_manual = False
 oled_width = 128
 oled_height = 64
 # the first argument of I2C is the set of i2c pins which should be initialised
-i2c=I2C(0, scl=pin_oled_scl, sda=pin_oled_sda, freq=200000)
+i2c=I2C(0, scl=pin_oled_scl, sda=pin_oled_sda, freq=400000)
 oled = SSD1306_I2C(oled_width, oled_height, i2c)
+gfx = GFX(oled_width, oled_height, oled.pixel)
 # fonts
+write12 = Write(oled, ubuntu_condensed_12)
 write15 = Write(oled, ubuntu_mono_15)
 write20 = Write(oled, ubuntu_mono_20)
 # Battery icons
@@ -175,17 +177,18 @@ def detect_presence():
 
 def draw_status_bar(): # display stuff at the top of the oled screen
     #global mode_debug, mode_manual
+    gfx.fill_rect(0, 0, 128, 15, 0)
     battery_percentage = measure_battery()
     select_battery_icon = get_battery_icon(battery_percentage)
     battery.text(select_battery_icon, 108, 0)
     # DEBUG mode shows sensor output
     if mode_debug and not mode_manual:
-        brightness = measure_brightness()
-        oled.text(brightness "%", 15, 0)
+        brightness = round(measure_brightness())
+        write12.text(str(brightness) + "%", 15, 0)
         lightbulb.char('lightbulb', 0, 0)
-        distance = measure_distance()
-        oled.text(brightness "cm", 55, 0)
-        arrows.char('arrows-alt-h', 40, 0)
+        distance = round(measure_distance())
+        write12.text(str(distance) + "cm", 63, 0)
+        arrows.char('arrows-alt-h', 45, 0)
     oled.show()
 
 def get_battery_icon(battery_percentage):
@@ -300,7 +303,7 @@ def main():
                 # initialise
                 motor_cleanup()
                 oled.fill(0)
-                write15.text("MANUAL mode", 0, 0)
+                write15.text("MANUAL mode", 0, 25)
                 oled.show()
                 # Dewit
                 draw_status_bar()
@@ -333,8 +336,8 @@ def main():
                     break
                 # initialise
                 motor_cleanup()
-                clear_screen()
-                write15.text("DEBUG mode", 0, 15)
+                #clear_screen()
+                write15.text("DEBUG mode", 0, 25)
                 draw_status_bar()
                 presence_detected = detect_presence()
                 time_since_presence = 0
@@ -346,6 +349,7 @@ def main():
                         mode_debug = False
                         mode_switch = True
                         break
+                    draw_status_bar()
                     utime.sleep(polling_interval_presence)
                     time_since_presence += polling_interval_presence
                     presence_detected = detect_presence()
