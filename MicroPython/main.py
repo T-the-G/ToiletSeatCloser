@@ -3,7 +3,7 @@ from machine import Pin, I2C, ADC
 import utime
 # SSD1300 OLED display
 from ssd1306 import SSD1306_I2C, framebuf
-from oled import Write, GFX
+from oled import Write
 from oled.fonts import ubuntu_mono_15, ubuntu_mono_20, ubuntu_condensed_12
 # handle interrupts
 from micropython import alloc_emergency_exception_buf, schedule
@@ -59,7 +59,6 @@ oled_height = 64
 # the first argument of I2C is the set of i2c pins which should be initialised
 i2c=I2C(0, scl=pin_oled_scl, sda=pin_oled_sda, freq=400000)
 oled = SSD1306_I2C(oled_width, oled_height, i2c)
-gfx = GFX(oled_width, oled_height, oled.pixel)
 # fonts
 write12 = Write(oled, ubuntu_condensed_12)
 write15 = Write(oled, ubuntu_mono_15)
@@ -185,7 +184,7 @@ def detect_presence():
 
 def draw_status_bar(): # display stuff at the top of the oled screen
     #global mode_debug, mode_manual
-    gfx.fill_rect(0, 0, 128, 15, 0)
+    oled.fill_rect(0, 0, 128, 15, 0)
     battery_percentage = measure_battery()
     select_battery_icon = get_battery_icon(battery_percentage)
     battery.text(select_battery_icon, 108, -1)
@@ -200,17 +199,17 @@ def draw_status_bar(): # display stuff at the top of the oled screen
     oled.show()
 
 def draw_toilet(frame=1):
-    gfx.fill_rect(80, 13, 128, 64, 0)
+    oled.fill_rect(80, 13, 128, 64, 0)
     oled.blit(toilet_icon, 80, 12)
     if frame == 1:
-        gfx.rect(105, 15, 3, 22, 1)
+        oled.rect(105, 15, 3, 22, 1)
     elif frame == 2:
-        gfx.line(105, 34+1, 120, 19+1, 1)
-        gfx.line(107, 36, 122, 21, 1)
+        oled.line(105, 34+1, 120, 19+1, 1)
+        oled.line(107, 36, 122, 21, 1)
         oled.pixel(106, 35, 1)
         oled.pixel(121, 20, 1)
     elif frame == 3:
-        gfx.rect(105, 34, 22, 3, 1)
+        oled.rect(105, 34, 22, 3, 1)
     oled.show()
 
 def get_battery_icon(battery_percentage):
@@ -413,6 +412,7 @@ main()
 #        utime.sleep(0.5)
 
 # test toilet animation
+oled.contrast(0)
 while True:
     for i in 1,2,3:
         draw_toilet(i)
