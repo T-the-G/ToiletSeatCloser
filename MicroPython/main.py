@@ -3,7 +3,7 @@ from machine import Pin, I2C, ADC
 import utime
 # SSD1300 OLED display
 from ssd1306 import SSD1306_I2C, framebuf
-from oled import Write, GFX, SSD1306_I2C
+from oled import Write, GFX
 from oled.fonts import ubuntu_mono_15, ubuntu_mono_20, ubuntu_condensed_12
 # handle interrupts
 from micropython import alloc_emergency_exception_buf, schedule
@@ -96,12 +96,20 @@ class horizontal_arrows_icon:
         }
 arrows = Write(oled, horizontal_arrows_icon)
 
+# Toilet icon
+toilet_icon_array = bytearray(b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xe0\x00\x00\x00\x00\x00\x00\xa0\x00\x00\x00\x00\x00\x07\xfc\x00\x00\x00\x00\x00\x0c\x06\x00\x00\x00\x00\x00\x18\x02\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\xff\xff\xf8\x00\x00\x10\x01\x80\x00\x04\x00\x00\x1f\xff\xff\xff\xfc\x00\x00\x10\x00\x00\x00\x04\x00\x00\x10\x00\x00\x00\x04\x00\x00\x10\x00\x00\x00\x04\x00\x00\x08\x00\x00\x00\x08\x00\x00\x08\x00\x00\x00\x10\x00\x00\x04\x00\x00\x00`\x00\x00\x06\x00\x00\x01\x80\x00\x00\x02\x00\x00\x03\x00\x00\x00\x01\x00\x00\x04\x00\x00\x00\x00\x80\x00\x08\x00\x00\x00\x00@\x00\x18\x00\x00\x00\x00@\x00\x10\x00\x00\x00\x00 \x00\x10\x00\x00\x00\x00 \x00 \x00\x00\x00\x00 \x00 \x00\x00\x00\x00 \x00 \x00\x00\x00\x00`\x00 \x00\x00\x00\x00@\x00 \x00\x00\x00\x00@\x00\x10\x00\x00\x00\x00\xc0\x00\x10\x00\x00\x00\x00\x80\x00\x08\x00\x00\x00\x00\x80\x00\x08\x00\x00\x00\x00\xff\xff\xf0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
+toilet_icon = framebuf.FrameBuffer(toilet_icon_array, 55, 55, framebuf.MONO_HLSB)
+
 ## test static icons
 #oled.fill(0)
 #oled.contrast(0)    # dim
 #lightbulb.char('lightbulb', 50, 0)
 ##ruler.char('ruler', 0, 0)
 #arrows.char('arrows-alt-h', 100, 0)
+#oled.show()
+
+## test toilet icon
+#oled.blit(toilet_icon, 82, 12)
 #oled.show()
 
 ###########################
@@ -180,7 +188,7 @@ def draw_status_bar(): # display stuff at the top of the oled screen
     gfx.fill_rect(0, 0, 128, 15, 0)
     battery_percentage = measure_battery()
     select_battery_icon = get_battery_icon(battery_percentage)
-    battery.text(select_battery_icon, 108, 0)
+    battery.text(select_battery_icon, 108, -1)
     # DEBUG mode shows sensor output
     if mode_debug and not mode_manual:
         brightness = round(measure_brightness())
@@ -189,6 +197,20 @@ def draw_status_bar(): # display stuff at the top of the oled screen
         distance = round(measure_distance())
         write12.text(str(distance) + "cm", 63, 0)
         arrows.char('arrows-alt-h', 45, 0)
+    oled.show()
+
+def draw_toilet(frame=1):
+    gfx.fill_rect(80, 13, 128, 64, 0)
+    oled.blit(toilet_icon, 80, 12)
+    if frame == 1:
+        gfx.rect(105, 15, 3, 22, 1)
+    elif frame == 2:
+        gfx.line(105, 34+1, 120, 19+1, 1)
+        gfx.line(107, 36, 122, 21, 1)
+        oled.pixel(106, 35, 1)
+        oled.pixel(121, 20, 1)
+    elif frame == 3:
+        gfx.rect(105, 34, 22, 3, 1)
     oled.show()
 
 def get_battery_icon(battery_percentage):
@@ -390,10 +412,8 @@ main()
 #        oled.show()
 #        utime.sleep(0.5)
 
-# test static icons
-oled.fill(0)
-oled.contrast(0)    # dim
-lightbulb.char('lightbulb', 50, 0)
-ruler.char('ruler', 0, 0)
-arrows.char('arrows-alt-h', 100, 0)
-oled.show()
+# test toilet animation
+while True:
+    for i in 1,2,3:
+        draw_toilet(i)
+        utime.sleep(1)
