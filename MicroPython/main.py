@@ -13,14 +13,14 @@ alloc_emergency_exception_buf(100)
 # Variables that need callibration #
 ####################################
 action_after_seconds        = 60       # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
-brightness_threshold        = 25000      # phototransistor brightness threshold for detecting restroom light
+brightness_threshold        = 40000      # phototransistor brightness threshold for detecting restroom light
 motion_threshold            = 5         # difference in distance (cm) between successive measurements to detect motion 
 polling_interval_presence   = 1         # seconds between polling when presence has been detected
 polling_interval_standby    = 5         # seconds between polling during standby
 previous_distance           = 165       # initialise typical distance (cm) measured when nobody is in the restroom
 steps_per_revolution        = 2048      # stepper motor steps per revolution
 step_sleep_close            = 0.003     # seconds between stepper motor steps during lid close action
-step_sleep_retract             = 0.002     # seconds between stepper motor steps during retract action
+step_sleep_retract          = 0.002     # seconds between stepper motor steps during retract action
 
 ###################
 #   Define pins   #
@@ -62,7 +62,7 @@ oled = SSD1306_I2C(oled_width,oled_height,i2c)
 # fonts
 write15 = Write(oled, ubuntu_mono_15)
 write20 = Write(oled, ubuntu_mono_20)
-# Battery graphic
+# Battery icons
 class battery_status:
     _FONT = {
         49: [20, 1099511627775, 1099511627775, 1099511627775, 824633720832, 824633720832, 17179869168, 17179869168, 68719476720, 68719476720, 17179869168, 17179869168, 824633720832, 824633720832, 1099511627775],
@@ -72,6 +72,27 @@ class battery_status:
         53: [20, 1099511627775, 1099511627775, 1099511627775, 824633720832, 824633720832, 17179869168, 12884901936, 64424509488, 64424509488, 12884901936, 17179869168, 824633720832, 824633720832, 1099511627775],
         }
 battery = Write(oled, battery_status)
+
+# Lightbulb icon
+class lightbulb_icon:
+    _FONT = {
+        'lightbulb': [11, 4128831, 3932175, 3146691, 3145779, 3145776, 3145731, 3145731, 3932163, 4128783, 4128831, 4194303, 4177983, 4177983, 4190463, 4194303],
+        }
+lightbulb = Write(oled, lightbulb_icon)
+
+# Ruler icon
+class ruler_icon:
+    _FONT = {
+        'ruler': [16, 4291035135, 4278255615, 4228120575, 4026732543, 4026545151, 4227859455, 4278193983, 4290773055, 4293918915, 4294705152, 4294901760, 4294950915, 4294963215, 4294966335, 4294967295],
+        }
+ruler = Write(oled, ruler_icon)
+
+# Horizontal arrows icon (might look better than the ruler icon)
+class horizontal_arrows_icon:
+    _FONT = {
+        'arrows-alt-h': [14, 268435455, 268435455, 268435455, 268435455, 265289535, 252706575, 201326595, 0, 201326592, 252706575, 265289535, 268435455, 268435455, 268435455, 268435455],
+        }
+arrows = Write(oled, horizontal_arrows_icon)
 
 ###########################
 # Setup the stepper motor #
@@ -140,9 +161,9 @@ def detect_presence():
     if brightness_detected or motion_detected:
         presence_detected = True
     previous_distance = distance
-    #print("Presence detected: ", presence_detected)
-    #print("The distance from object is ", distance, "cm")
-    #print("The brightness is ", brightness)
+    print("Presence detected: ", presence_detected)
+    print("The distance from object is ", distance, "cm")
+    print("The brightness is ", brightness)
     return presence_detected
 
 def show_something():
@@ -249,6 +270,7 @@ def main():
                 print("CLOSING THE SEAT WOOOO")
                 utime.sleep(5)
                 print("Switching back to AUTO mode")
+                mode_manual = False
                 break
                 #presence_detected = detect_presence()
                 #time_since_presence = 0
@@ -309,11 +331,22 @@ interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
 #    #motor_cleanup()
 #    utime.sleep(1)
 
-#main()
+main()
 #show_something()
-for j in range(5):
-    for i in range(1, 6):
-        oled.fill(0)
-        battery.text(str(i), 108, 0)
-        oled.show()
-        utime.sleep(0.5)
+
+
+# test battery status icons
+#while True:
+#    for i in range(1, 6):
+#        oled.fill(0)
+#        battery.text(str(i), 108, 0)
+#        oled.show()
+#        utime.sleep(0.5)
+
+# test static icons
+oled.fill(0)
+oled.contrast(0)    # dim
+lightbulb.char('lightbulb', 50, 0)
+ruler.char('ruler', 0, 0)
+arrows.char('arrows-alt-h', 100, 0)
+oled.show()
