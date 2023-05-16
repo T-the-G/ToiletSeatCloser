@@ -2,7 +2,7 @@
 from machine import Pin, I2C, ADC
 import utime
 # SSD1300 OLED display, install the following packages from PyPI:
-# micropython-ssd1306 by by Stefan Lehmann
+# micropython-ssd1306 by Stefan Lehmann
 # micropython-oled by Yeison Cardona 
 from ssd1306 import SSD1306_I2C, framebuf
 from oled import Write
@@ -10,6 +10,9 @@ from oled.fonts import ubuntu_mono_15, ubuntu_mono_20, ubuntu_condensed_12
 # handle interrupts
 from micropython import alloc_emergency_exception_buf, schedule
 alloc_emergency_exception_buf(100)
+# Multi threading
+import _thread
+import uasyncio
 
 ####################################
 # Variables that need callibration #
