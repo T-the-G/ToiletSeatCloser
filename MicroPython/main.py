@@ -12,7 +12,7 @@ from micropython import alloc_emergency_exception_buf, schedule
 alloc_emergency_exception_buf(100)
 # Multi threading
 import _thread
-import uasyncio
+import uasyncio as asyncio
 
 ####################################
 # Variables that need callibration #
@@ -171,6 +171,12 @@ def button_interrupt(pin):
         oled.show()
         print("State machine error")
         exit(1)
+
+task=0
+def button_async_interrupt(pin):
+    global task
+    print('About to cancel task')
+    task.cancel()
         
 def clear_screen():
     oled.fill(0)
@@ -296,6 +302,25 @@ def motor_spin(revolutions=1, motor_direction=False, step_sleep=step_sleep_retra
             break
         utime.sleep(step_sleep)
 
+async def motor_spin_async(revolutions=1, motor_direction=False, step_sleep=step_sleep_retract):
+    global button_pushed, motor_retract_revolutions
+    motor_retract_revolutions = 0
+    i = 0
+    motor_step_counter = 0
+    motor_cleanup()
+    for i in range(revolutions*steps_per_revolution):
+        for pin in range(0, len(motor_pins)):
+            motor_pins[pin].value(step_sequence[motor_step_counter][pin])
+        if motor_direction==True:
+            motor_step_counter = (motor_step_counter - 1) % 4
+        elif motor_direction==False:
+            motor_step_counter = (motor_step_counter + 1) % 4
+        else: # defensive programming
+            print( "uh oh... direction should *always* be either True or False" )
+            motor_cleanup()
+            exit(1)
+        utime.sleep(step_sleep)
+
 
 def main():
     global mode_debug, mode_manual, mode_switch
@@ -404,7 +429,7 @@ def show_something():
 #   Setup interrupts   #
 ########################
 interrupt_clk = Pin(pin_ky040_button, Pin.IN, Pin.PULL_DOWN)
-interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
+interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_async_interrupt)
 
 ###############
 #   Execute   #
@@ -418,5 +443,8 @@ interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
 #    #motor_cleanup()
 #    utime.sleep(1)
 
-main()
+#main()
 #show_something()
+
+async_task = asyncio.create_task(motor_spin_async(revolutions=3))
+task = async_task
