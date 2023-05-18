@@ -32,7 +32,9 @@ step_sleep_retract          = 0.002     # seconds between stepper motor steps du
 pin_oled_sda        = Pin(16)
 pin_oled_scl        = Pin(17)
 # KY-040 rotary encoder
-pin_ky040_button    = 10
+pin_ky040_clk       = Pin(12, Pin.IN, Pin.PULL_DOWN)
+pin_ky040_dt        = Pin(11, Pin.IN, Pin.PULL_DOWN)
+pin_ky040_sw        = Pin(10, Pin.IN, Pin.PULL_DOWN)
 # HC-SR04 ultrasonic distance sensor
 pin_hcsr04_trigger  = Pin(14, Pin.OUT)
 pin_hcsr04_echo     = Pin(15, Pin.IN)
@@ -137,7 +139,6 @@ step_sequence = [[1,0,0,0],
                  [0,0,0,1]]
 motor_pins = [pin_motor_1, pin_motor_2, pin_motor_3, pin_motor_4]
 
-
 #################
 #   Functions   #
 #################
@@ -145,11 +146,13 @@ motor_pins = [pin_motor_1, pin_motor_2, pin_motor_3, pin_motor_4]
 last_button_time = 0    # last time the button was pushed
 def button_interrupt(pin):
     global button_pushed, last_button_time, mode_debug, mode_manual, mode_switch
+    # <debounce>
     new_button_time = utime.ticks_ms()
     if (new_button_time - last_button_time) < 200:
         return
     else:
         last_button_time = new_button_time
+    # </debounce>
     button_pushed = True
     print("BUTTON PUSHED WOOOOOOO")
     # switch from AUTO to MANUAL
@@ -173,11 +176,39 @@ def button_interrupt(pin):
         print("State machine error")
         exit(1)
 
-task=0
-def button_async_interrupt(pin):
-    global task
-    print('About to cancel task')
-    task.cancel()
+rotary_counter = 0  # position of the knob
+last_clk_time = 0   # last time the clk interrupt occured
+def clk_interrupt(pin):
+    global last_clk_time, rotary_counter
+    # <debounce>
+    new_clk_time = utime.ticks_ms()
+    if (new_clk_time - last_clk_time) < 50:
+        return
+    else:
+        last_clk_time = new_clk_time
+    # </debounce>
+    new_clk_time = utime.ticks_ms()
+    clk_state   = pin_ky040_clk.value()
+    dt_state    = pin_ky040_dt.value()
+    if clk_state == 0 and dt_state == 1:
+        rotary_counter += 1
+        print ("Counter ", rotary_counter)
+
+last_dt_time = 0    # last time the dt interrupt occured
+def dt_interrupt(pin):
+    global last_dt_time, rotary_counter
+    # <debounce>
+    new_dt_time = utime.ticks_ms()
+    if (new_dt_time - last_dt_time) < 50:
+        return
+    else:
+        last_dt_time = new_dt_time
+    # </debounce>
+    clk_state   = pin_ky040_clk.value()
+    dt_state    = pin_ky040_dt.value()
+    if clk_state == 1 and dt_state == 0:
+        rotary_counter -= 1
+        print ("Counter ", rotary_counter)
         
 def clear_screen():
     oled.fill(0)
@@ -197,9 +228,9 @@ def detect_presence():
     if brightness_detected or motion_detected:
         presence_detected = True
     previous_distance = distance
-    print("Presence detected: ", presence_detected)
-    print("The distance from object is ", distance, "cm")
-    print("The brightness is ", brightness)
+    #print("Presence detected: ", presence_detected)
+    #print("The distance from object is ", distance, "cm")
+    #print("The brightness is ", brightness)
     return presence_detected
 
 def draw_status_bar(): # display stuff at the top of the oled screen
@@ -429,8 +460,10 @@ def show_something():
 ########################
 #   Setup interrupts   #
 ########################
-interrupt_clk = Pin(pin_ky040_button, Pin.IN, Pin.PULL_DOWN)
-interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
+pin_ky040_clk.irq(trigger=Pin.IRQ_RISING, handler=clk_interrupt)
+pin_ky040_dt.irq(trigger=Pin.IRQ_RISING, handler=dt_interrupt)
+pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
+
 
 ###############
 #   Execute   #
