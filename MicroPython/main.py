@@ -182,7 +182,7 @@ def clk_interrupt(pin):
     global last_clk_time, rotary_counter
     # <debounce>
     new_clk_time = utime.ticks_ms()
-    if (new_clk_time - last_clk_time) < 50:
+    if (new_clk_time - last_clk_time) < 10:
         return
     else:
         last_clk_time = new_clk_time
@@ -190,6 +190,7 @@ def clk_interrupt(pin):
     new_clk_time = utime.ticks_ms()
     clk_state   = pin_ky040_clk.value()
     dt_state    = pin_ky040_dt.value()
+    #print("clk_interrupt    dt: ", dt_state, " clk: ", clk_state)
     if clk_state == 0 and dt_state == 1:
         rotary_counter += 1
         print ("Counter ", rotary_counter)
@@ -199,13 +200,14 @@ def dt_interrupt(pin):
     global last_dt_time, rotary_counter
     # <debounce>
     new_dt_time = utime.ticks_ms()
-    if (new_dt_time - last_dt_time) < 50:
+    if (new_dt_time - last_dt_time) < 10:
         return
     else:
         last_dt_time = new_dt_time
     # </debounce>
     clk_state   = pin_ky040_clk.value()
     dt_state    = pin_ky040_dt.value()
+    #print("dt_interrupt    dt: ", dt_state, " clk: ", clk_state)
     if clk_state == 1 and dt_state == 0:
         rotary_counter -= 1
         print ("Counter ", rotary_counter)
@@ -460,8 +462,8 @@ def show_something():
 ########################
 #   Setup interrupts   #
 ########################
-pin_ky040_clk.irq(trigger=Pin.IRQ_RISING, handler=clk_interrupt)
-pin_ky040_dt.irq(trigger=Pin.IRQ_RISING, handler=dt_interrupt)
+pin_ky040_clk.irq(trigger=Pin.IRQ_FALLING, handler=clk_interrupt)
+pin_ky040_dt.irq(trigger=Pin.IRQ_FALLING, handler=dt_interrupt)
 pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
 
 
