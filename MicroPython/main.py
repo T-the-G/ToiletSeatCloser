@@ -1,6 +1,7 @@
 # General libraries
 from machine import Pin, I2C, ADC
 import utime
+import math
 import _thread
 # SSD1300 OLED display, install the following packages from PyPI:
 # micropython-ssd1306 by Stefan Lehmann
@@ -139,11 +140,20 @@ step_sequence = [[1,0,0,0],
                  [0,0,0,1]]
 motor_pins = [pin_motor_1, pin_motor_2, pin_motor_3, pin_motor_4]
 
+############################
+# Setup the rotary encoder #
+############################
+last_button_time = 0    # last time the button was pushed
+rotary_counter = 0  # position of the knob, 20 steps per 360 degrees
+last_clk_time = 0   # last time the clk interrupt occured
+last_dt_time = 0    # last time the dt interrupt occured
+deadzone = math.radians(40) # rotation deadzone, 18 degrees per step, so 40 degrees is about two steps in either direction
+max_rotation_steps = 10 # limit how many steps in either direction can be made, 10 steps is half a rotation
+
 #################
 #   Functions   #
 #################
 
-last_button_time = 0    # last time the button was pushed
 def button_interrupt(pin):
     global button_pushed, last_button_time, mode_debug, mode_manual, mode_switch
     # <debounce>
@@ -176,13 +186,18 @@ def button_interrupt(pin):
         print("State machine error")
         exit(1)
 
-rotary_counter = 0  # position of the knob
-last_clk_time = 0   # last time the clk interrupt occured
 def clk_interrupt(pin):
     global last_clk_time, rotary_counter
+    # only do something in DEBUG mode
+    if not mode_debug:
+        return
+    # don't register more than half a rotation
+    if rotary_counter >= max_rotation_steps:
+        rotary_counter = max_rotation_steps
+        return
     # <debounce>
     new_clk_time = utime.ticks_ms()
-    if (new_clk_time - last_clk_time) < 10:
+    if (new_clk_time - last_clk_time) < 20:
         return
     else:
         last_clk_time = new_clk_time
@@ -193,14 +208,21 @@ def clk_interrupt(pin):
     #print("clk_interrupt    dt: ", dt_state, " clk: ", clk_state)
     if clk_state == 0 and dt_state == 1:
         rotary_counter += 1
-        print ("Counter ", rotary_counter)
+        #print ("Counter ", rotary_counter)
+    draw_rotary_encoder(rotary_counter)
 
-last_dt_time = 0    # last time the dt interrupt occured
 def dt_interrupt(pin):
     global last_dt_time, rotary_counter
+    # only do something in DEBUG mode
+    if not mode_debug:
+        return
+    # don't register more than half a rotation
+    if rotary_counter <= -max_rotation_steps:
+        rotary_counter = -max_rotation_steps
+        return
     # <debounce>
     new_dt_time = utime.ticks_ms()
-    if (new_dt_time - last_dt_time) < 10:
+    if (new_dt_time - last_dt_time) < 20:
         return
     else:
         last_dt_time = new_dt_time
@@ -210,7 +232,8 @@ def dt_interrupt(pin):
     #print("dt_interrupt    dt: ", dt_state, " clk: ", clk_state)
     if clk_state == 1 and dt_state == 0:
         rotary_counter -= 1
-        print ("Counter ", rotary_counter)
+        #print ("Counter ", rotary_counter)
+    draw_rotary_encoder(rotary_counter)
         
 def clear_screen():
     oled.fill(0)
@@ -235,6 +258,60 @@ def detect_presence():
     #print("The brightness is ", brightness)
     return presence_detected
 
+def draw_rotary_encoder(rotary_counter):
+    circle_radius = 20
+    centre_x = 100
+    centre_y = 39
+    oled.fill_rect(80, 13, 128, 64, 0)
+    angle = rotary_counter * 2 * math.pi / 20
+    # draw the circle
+    oled.ellipse(centre_x, centre_y, circle_radius, circle_radius, 1)
+    # draw the deadzone
+    inner_radius = 15
+    for a in deadzone, -deadzone:
+        outer_x = round(centre_x + circle_radius * math.sin(a))
+        outer_y = round(centre_y - circle_radius * math.cos(a))
+        inner_x = round(centre_x + inner_radius * math.sin(a))
+        inner_y = round(centre_y - inner_radius * math.cos(a))
+        oled.line(inner_x, inner_y, outer_x, outer_y, 1)
+    # draw the dial
+    dial_x = round(centre_x + circle_radius * math.sin(angle))
+    dial_y = round(centre_y - circle_radius * math.cos(angle))
+    oled.line(centre_x, centre_y, dial_x, dial_y, 1)
+    # if outside the deadzone, draw a "progress bar" following the dial, and some text
+    if angle > deadzone:
+        deadzone_deg = round(math.degrees(deadzone))
+        angle_deg = round(math.degrees(angle))
+        for deg in range(deadzone_deg, angle_deg+1):
+            a = math.radians(deg)
+            outer_x = round(centre_x + circle_radius * math.sin(a))
+            outer_y = round(centre_y - circle_radius * math.cos(a))
+            inner_x = round(centre_x + inner_radius * math.sin(a))
+            inner_y = round(centre_y - inner_radius * math.cos(a))
+            oled.line(inner_x, inner_y, outer_x, outer_y, 1)
+    elif angle < -deadzone:
+        deadzone_deg = round(math.degrees(deadzone))
+        angle_deg = round(math.degrees(angle))
+        for deg in range(-deadzone_deg, angle_deg-1, -1):
+            a = math.radians(deg)
+            outer_x = round(centre_x + circle_radius * math.sin(a))
+            outer_y = round(centre_y - circle_radius * math.cos(a))
+            inner_x = round(centre_x + inner_radius * math.sin(a))
+            inner_y = round(centre_y - inner_radius * math.cos(a))
+            oled.line(inner_x, inner_y, outer_x, outer_y, 1)
+    print("DEBUG mode: ", mode_debug)
+    print("MANUAL mode: ", mode_manual)
+    oled.show()
+    
+# mode_debug = True
+#def test_draw_rotary_encoder():
+#    while True:
+#        #draw_status_bar()
+#        #draw_rotary_encoder(rotary_counter)
+#        #clear_screen()
+#        utime.sleep(1)
+    
+
 def draw_status_bar(): # display stuff at the top of the oled screen
     #global mode_debug, mode_manual
     oled.fill_rect(0, 0, 128, 15, 0)
@@ -256,7 +333,7 @@ def draw_toilet(frame=1):
     if frame == 1:
         oled.rect(105, 15, 3, 22, 1)
     elif frame == 2:
-        oled.line(105, 34+1, 120, 19+1, 1)
+        oled.line(105, 35, 120, 20, 1)
         oled.line(107, 36, 122, 21, 1)
         oled.pixel(106, 35, 1)
         oled.pixel(121, 20, 1)
@@ -344,7 +421,7 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
 
 
 def main():
-    global action_in_progress, mode_debug, mode_manual, mode_switch
+    global action_in_progress, mode_debug, mode_manual, mode_switch, rotary_counter
     while True:
         # initialise
         motor_cleanup()
@@ -424,6 +501,7 @@ def main():
         if mode_debug and not mode_manual:
             # initialise
             motor_cleanup()
+            rotary_counter = 0
             oled.fill(0)
             write15.text("DEBUG mode", 0, 25)
             while True:
@@ -436,6 +514,7 @@ def main():
                 if motor_retract_revolutions != 0:
                     pass
                 draw_status_bar()
+                draw_rotary_encoder(rotary_counter)
                 oled.show()
                 utime.sleep(polling_interval_presence)
                 presence_detected = detect_presence()
@@ -479,5 +558,6 @@ pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
 #    #motor_cleanup()
 #    utime.sleep(1)
 
+#test()
 main()
 #show_something()
