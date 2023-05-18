@@ -1,6 +1,7 @@
 # General libraries
 from machine import Pin, I2C, ADC
 import utime
+import _thread
 # SSD1300 OLED display, install the following packages from PyPI:
 # micropython-ssd1306 by Stefan Lehmann
 # micropython-oled by Yeison Cardona 
@@ -10,15 +11,12 @@ from oled.fonts import ubuntu_mono_15, ubuntu_mono_20, ubuntu_condensed_12
 # handle interrupts
 from micropython import alloc_emergency_exception_buf, schedule
 alloc_emergency_exception_buf(100)
-# Multi threading
-import _thread
-import uasyncio as asyncio
 
 ####################################
 # Variables that need callibration #
 ####################################
 action_after_seconds        = 60       # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
-brightness_threshold        = 50        # phototransistor brightness (%) threshold for detecting restroom light
+brightness_threshold        = 60        # phototransistor brightness (%) threshold for detecting restroom light
 motion_threshold            = 5         # difference in distance (cm) between successive measurements to detect motion 
 polling_interval_presence   = 1         # seconds between polling when presence has been detected
 polling_interval_standby    = 5         # seconds between polling during standby
@@ -53,8 +51,12 @@ pin_motor_4         = Pin(21, Pin.OUT)
 # AUTO:     poll sensors and close lid after presence is no longer detected
 # MANUAL:   immediately close the lid, ignoring presence detection
 # DEBUG:    manually adjust position, and display sensor output. Useful for callibration
-mode_debug  = False
-mode_manual = False
+action_in_progress  = False # true if the motor is being actuated
+button_pushed       = False # used to stop the motor if action is in progress
+mode_debug          = False # true if DEBUG mode is engaged
+mode_manual         = False # true if MAUNAL mode is engaged
+mode_switch         = False # used in the main function to break out of loops
+
 
 ######################
 #   Setup the OLED   #
@@ -127,6 +129,7 @@ toilet_icon = framebuf.FrameBuffer(toilet_icon_array, 55, 55, framebuf.MONO_HLSB
 ###########################
 # Setup the stepper motor #
 ###########################
+motor_direction=True # True for clockwise (closing seat), False for counter-clockwise (retracting arm) (as seen when looking from the back of the motor)
 motor_retract_revolutions = 0 # If the action is interrupted, reverse the motor by this amount of revolutions
 step_sequence = [[1,0,0,0],
                  [0,1,0,0],
@@ -139,8 +142,6 @@ motor_pins = [pin_motor_1, pin_motor_2, pin_motor_3, pin_motor_4]
 #   Functions   #
 #################
 
-button_pushed   = False # used to stop the motor if action is in progress
-mode_switch     = False # used in the main function to break out of loops
 last_button_time = 0    # last time the button was pushed
 def button_interrupt(pin):
     global button_pushed, last_button_time, mode_debug, mode_manual, mode_switch
@@ -215,7 +216,6 @@ def draw_status_bar(): # display stuff at the top of the oled screen
         distance = round(measure_distance())
         write12.text(str(distance) + "cm", 63, 0)
         arrows.char('arrows-alt-h', 45, 0)
-    oled.show()
 
 def draw_toilet(frame=1):
     oled.fill_rect(80, 13, 128, 64, 0)
@@ -229,12 +229,12 @@ def draw_toilet(frame=1):
         oled.pixel(121, 20, 1)
     elif frame == 3:
         oled.rect(105, 34, 22, 3, 1)
-    oled.show()
 ## test toilet animation
 #oled.contrast(0)
 #while True:
 #    for i in 1,2,3:
 #        draw_toilet(i)
+#        oled.show()
 #        utime.sleep(1)
 
 def get_battery_icon(battery_percentage):
@@ -278,8 +278,10 @@ def motor_cleanup():
     for pin in range(0, len(motor_pins)):
         motor_pins[pin].low()
 
-def motor_spin(revolutions=1, motor_direction=False, step_sleep=step_sleep_retract):
-    global button_pushed, motor_retract_revolutions
+def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
+    print("HERE WE GO WOOOOO")
+    global action_in_progress, button_pushed, motor_direction, motor_retract_revolutions
+    button_pushed = False
     motor_retract_revolutions = 0
     i = 0
     motor_step_counter = 0
@@ -297,38 +299,24 @@ def motor_spin(revolutions=1, motor_direction=False, step_sleep=step_sleep_retra
             exit(1)
         if button_pushed:
             motor_cleanup()
-            motor_retract_revolutions = i/steps_per_revolution
+            if motor_direction == True:
+                motor_retract_revolutions = i/steps_per_revolution
+            elif motor_direction == False:
+                motor_retract_revolutions -= i/steps_per_revolution
             button_pushed = False
+            action_in_progress = False
             break
         utime.sleep(step_sleep)
-
-async def motor_spin_async(revolutions=1, motor_direction=False, step_sleep=step_sleep_retract):
-    global button_pushed, motor_retract_revolutions
-    motor_retract_revolutions = 0
-    i = 0
-    motor_step_counter = 0
-    motor_cleanup()
-    for i in range(revolutions*steps_per_revolution):
-        for pin in range(0, len(motor_pins)):
-            motor_pins[pin].value(step_sequence[motor_step_counter][pin])
-        if motor_direction==True:
-            motor_step_counter = (motor_step_counter - 1) % 4
-        elif motor_direction==False:
-            motor_step_counter = (motor_step_counter + 1) % 4
-        else: # defensive programming
-            print( "uh oh... direction should *always* be either True or False" )
-            motor_cleanup()
-            exit(1)
-        utime.sleep(step_sleep)
+    action_in_progress = False
 
 
 def main():
-    global mode_debug, mode_manual, mode_switch
+    global action_in_progress, mode_debug, mode_manual, mode_switch
     while True:
         # initialise
         motor_cleanup()
         clear_screen()
-        presence_detected = False
+        #presence_detected = False
 
         # AUTO mode
         if not mode_debug and not mode_manual:
@@ -340,6 +328,7 @@ def main():
                     break
                 show_something() # DISPLAY SOMETHING NICE
                 draw_status_bar()
+                oled.show()
                 utime.sleep(polling_interval_presence)
                 presence_detected = detect_presence()
                 time_since_presence = 0
@@ -350,7 +339,6 @@ def main():
                         #perform_action = True
                         # Dewit
                         print("CLOSING THE SEAT WOOOO")
-                        oled.poweroff()
                         break
                     utime.sleep(polling_interval_presence)
                     time_since_presence += polling_interval_presence
@@ -368,12 +356,19 @@ def main():
                 # initialise
                 motor_cleanup()
                 oled.fill(0)
+                draw_status_bar()
                 write15.text("MANUAL mode", 0, 25)
                 oled.show()
                 # Dewit
-                draw_status_bar()
                 print("CLOSING THE SEAT WOOOO")
-                utime.sleep(5)
+                action_in_progress = True
+                #utime.sleep(5)
+                thread_id = _thread.start_new_thread(motor_spin, ())
+                while action_in_progress:
+                    for i in 1,2,3:
+                        draw_toilet(i)
+                        oled.show()
+                        utime.sleep(1)
                 print("Switching back to AUTO mode")
                 mode_manual = False
                 break
@@ -394,19 +389,27 @@ def main():
 
         # DEBUG mode
         if mode_debug and not mode_manual:
+            # initialise
+            motor_cleanup()
+            oled.fill(0)
+            write15.text("DEBUG mode", 0, 25)
             while True:
+                # switch modes if button has been pushed
                 if mode_switch:
                     clear_screen()
                     mode_switch = False
                     break
-                # initialise
-                motor_cleanup()
-                #clear_screen()
-                write15.text("DEBUG mode", 0, 25)
+                # revert motor if ongoing action has been cancelled
+                if motor_retract_revolutions != 0:
+                    pass
                 draw_status_bar()
+                oled.show()
+                utime.sleep(polling_interval_presence)
                 presence_detected = detect_presence()
                 time_since_presence = 0
                 while not presence_detected:
+                    draw_status_bar()
+                    oled.show()
                     if mode_switch:
                         break
                     if time_since_presence >= action_after_seconds:
@@ -414,11 +417,9 @@ def main():
                         mode_debug = False
                         mode_switch = True
                         break
-                    draw_status_bar()
                     utime.sleep(polling_interval_presence)
                     time_since_presence += polling_interval_presence
                     presence_detected = detect_presence()
-                utime.sleep(polling_interval_presence)
 
 def show_something():
     write20.text("Hello", 15, 15)
@@ -429,7 +430,7 @@ def show_something():
 #   Setup interrupts   #
 ########################
 interrupt_clk = Pin(pin_ky040_button, Pin.IN, Pin.PULL_DOWN)
-interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_async_interrupt)
+interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
 
 ###############
 #   Execute   #
@@ -443,8 +444,5 @@ interrupt_clk.irq(trigger=Pin.IRQ_RISING, handler=button_async_interrupt)
 #    #motor_cleanup()
 #    utime.sleep(1)
 
-#main()
+main()
 #show_something()
-
-async_task = asyncio.create_task(motor_spin_async(revolutions=3))
-task = async_task
