@@ -11,8 +11,8 @@ from ssd1306 import SSD1306_I2C, framebuf
 from oled import Write
 from oled.fonts import ubuntu_mono_15, ubuntu_mono_20, ubuntu_condensed_12
 # handle interrupts
-from micropython import alloc_emergency_exception_buf, schedule
-alloc_emergency_exception_buf(100)
+#from micropython import alloc_emergency_exception_buf, schedule
+micropython.alloc_emergency_exception_buf(100)
 
 ####################################
 # Variables that need callibration #
@@ -160,7 +160,8 @@ def button_interrupt(pin):
     global button_pushed, last_button_time, mode_debug, mode_manual, mode_switch
     # <debounce>
     new_button_time = utime.ticks_ms()
-    if (new_button_time - last_button_time) < 200:
+    #if (new_button_time - last_button_time) < 200:
+    if utime.ticks_diff(new_button_time, last_button_time) < 200:
         return
     else:
         last_button_time = new_button_time
@@ -193,23 +194,24 @@ def clk_interrupt(pin):
     # only do something in DEBUG mode
     if not mode_debug:
         return
-    # don't register more than half a rotation
-    if rotary_counter >= max_rotation_steps:
-        rotary_counter = max_rotation_steps
-        return
     # <debounce>
     #new_clk_time = utime.ticks_ms()
     #if (new_clk_time - last_clk_time) < 20:
     #    return
     #else:
     #    last_clk_time = new_clk_time
+    #new_clk_time = utime.ticks_ms()
     new_rotation_time = utime.ticks_ms()
-    if (new_rotation_time - last_rotation_time) < 20:
+    #if (new_rotation_time - last_rotation_time) < 20:
+    if utime.ticks_diff(new_rotation_time, last_rotation_time) < 20:
         return
     else:
         last_rotation_time = new_rotation_time   
     # </debounce>
-    new_clk_time = utime.ticks_ms()
+    # don't register more than half a rotation
+    if rotary_counter >= max_rotation_steps:
+        rotary_counter = max_rotation_steps
+        return
     clk_state   = pin_ky040_clk.value()
     dt_state    = pin_ky040_dt.value()
     #print("clk_interrupt    dt: ", dt_state, " clk: ", clk_state)
@@ -224,10 +226,6 @@ def dt_interrupt(pin):
     # only do something in DEBUG mode
     if not mode_debug:
         return
-    # don't register more than half a rotation
-    if rotary_counter <= -max_rotation_steps:
-        rotary_counter = -max_rotation_steps
-        return
     # <debounce>
     #new_dt_time = utime.ticks_ms()
     #if (new_dt_time - last_dt_time) < 20:
@@ -235,11 +233,16 @@ def dt_interrupt(pin):
     #else:
     #    last_dt_time = new_dt_time
     new_rotation_time = utime.ticks_ms()
-    if (new_rotation_time - last_rotation_time) < 20:
+    #if (new_rotation_time - last_rotation_time) < 20:
+    if utime.ticks_diff(new_rotation_time, last_rotation_time) < 20:
         return
     else:
         last_rotation_time = new_rotation_time    
     # </debounce>
+    # don't register more than half a rotation
+    if rotary_counter <= -max_rotation_steps:
+        rotary_counter = -max_rotation_steps
+        return
     clk_state   = pin_ky040_clk.value()
     dt_state    = pin_ky040_dt.value()
     #print("dt_interrupt    dt: ", dt_state, " clk: ", clk_state)
@@ -274,6 +277,7 @@ def detect_presence():
 
 def draw_rotary_encoder(rotary_counter):
     global button_pushed, motor_retract_revolutions
+    micropython.mem_info()
     circle_radius = 20
     centre_x = 100
     centre_y = 39
@@ -445,10 +449,12 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
                 motor_retract_revolutions -= i/steps_per_revolution
             button_pushed = False
             action_in_progress = False
+            motor_cleanup()
             #_thread.exit()
             break
         utime.sleep(step_sleep)
     action_in_progress = False
+    motor_cleanup()
     #_thread.exit()
 
 def main():
