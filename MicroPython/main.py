@@ -3,6 +3,7 @@ from machine import Pin, I2C, ADC
 import utime
 import math
 import _thread
+import micropython
 # SSD1300 OLED display, install the following packages from PyPI:
 # micropython-ssd1306 by Stefan Lehmann
 # micropython-oled by Yeison Cardona 
@@ -187,7 +188,7 @@ def button_interrupt(pin):
         exit(1)
 
 def clk_interrupt(pin):
-    global last_clk_time, rotary_counter
+    global last_clk_time, rotary_counter, time_since_presence
     # only do something in DEBUG mode
     if not mode_debug:
         return
@@ -209,10 +210,12 @@ def clk_interrupt(pin):
     if clk_state == 0 and dt_state == 1:
         rotary_counter += 1
         #print ("Counter ", rotary_counter)
-    draw_rotary_encoder(rotary_counter)
+    #draw_rotary_encoder(rotary_counter)
+    time_since_presence = 0
+    #micropython.schedule(draw_rotary_encoder, rotary_counter)
 
 def dt_interrupt(pin):
-    global last_dt_time, rotary_counter
+    global last_dt_time, rotary_counter, time_since_presence
     # only do something in DEBUG mode
     if not mode_debug:
         return
@@ -233,7 +236,9 @@ def dt_interrupt(pin):
     if clk_state == 1 and dt_state == 0:
         rotary_counter -= 1
         #print ("Counter ", rotary_counter)
-    draw_rotary_encoder(rotary_counter)
+    #draw_rotary_encoder(rotary_counter)
+    time_since_presence = 0
+    #micropython.schedule(draw_rotary_encoder, rotary_counter)
         
 def clear_screen():
     oled.fill(0)
@@ -299,8 +304,7 @@ def draw_rotary_encoder(rotary_counter):
             inner_x = round(centre_x + inner_radius * math.sin(a))
             inner_y = round(centre_y - inner_radius * math.cos(a))
             oled.line(inner_x, inner_y, outer_x, outer_y, 1)
-    print("DEBUG mode: ", mode_debug)
-    print("MANUAL mode: ", mode_manual)
+    #micropython.mem_info()
     oled.show()
     
 # mode_debug = True
@@ -409,6 +413,7 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
             exit(1)
         if button_pushed:
             motor_cleanup()
+            print("Motor interrupted")
             if motor_direction == True:
                 motor_retract_revolutions = i/steps_per_revolution
             elif motor_direction == False:
@@ -419,9 +424,9 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
         utime.sleep(step_sleep)
     action_in_progress = False
 
-
+time_since_presence = 0 # used for exiting DEBUG mode after action_after_seconds
 def main():
-    global action_in_progress, mode_debug, mode_manual, mode_switch, rotary_counter
+    global action_in_progress, mode_debug, mode_manual, mode_switch, rotary_counter, time_since_presence
     while True:
         # initialise
         motor_cleanup()
@@ -478,8 +483,9 @@ def main():
                     for i in 1,2,3:
                         draw_toilet(i)
                         oled.show()
+                        if mode_switch: break
                         utime.sleep(1)
-                print("Switching back to AUTO mode")
+                #print("Switching back to AUTO mode")
                 mode_manual = False
                 break
                 #presence_detected = detect_presence()
@@ -511,17 +517,18 @@ def main():
                     mode_switch = False
                     break
                 # revert motor if ongoing action has been cancelled
-                if motor_retract_revolutions != 0:
-                    pass
+                #if motor_retract_revolutions != 0:
+                #    pass
                 draw_status_bar()
                 draw_rotary_encoder(rotary_counter)
-                oled.show()
+                #oled.show() # this is done in draw_rotary_encoder()
                 utime.sleep(polling_interval_presence)
                 presence_detected = detect_presence()
                 time_since_presence = 0
                 while not presence_detected:
                     draw_status_bar()
-                    oled.show()
+                    micropython.schedule(draw_rotary_encoder, rotary_counter)
+                    #oled.show()
                     if mode_switch:
                         break
                     if time_since_presence >= action_after_seconds:
