@@ -188,7 +188,7 @@ def button_interrupt(pin):
         exit(1)
 
 def clk_interrupt(pin):
-    global last_clk_time, rotary_counter, time_since_presence
+    global last_clk_time, rotary_counter
     # only do something in DEBUG mode
     if not mode_debug:
         return
@@ -211,11 +211,10 @@ def clk_interrupt(pin):
         rotary_counter += 1
         #print ("Counter ", rotary_counter)
     #draw_rotary_encoder(rotary_counter)
-    time_since_presence = 0
     #micropython.schedule(draw_rotary_encoder, rotary_counter)
 
 def dt_interrupt(pin):
-    global last_dt_time, rotary_counter, time_since_presence
+    global last_dt_time, rotary_counter
     # only do something in DEBUG mode
     if not mode_debug:
         return
@@ -237,7 +236,6 @@ def dt_interrupt(pin):
         rotary_counter -= 1
         #print ("Counter ", rotary_counter)
     #draw_rotary_encoder(rotary_counter)
-    time_since_presence = 0
     #micropython.schedule(draw_rotary_encoder, rotary_counter)
         
 def clear_screen():
@@ -294,6 +292,9 @@ def draw_rotary_encoder(rotary_counter):
             inner_x = round(centre_x + inner_radius * math.sin(a))
             inner_y = round(centre_y - inner_radius * math.cos(a))
             oled.line(inner_x, inner_y, outer_x, outer_y, 1)
+        oled.fill_rect(0, 48, 75, 64, 0)
+        oled.fill_rect(10, 48, 60, 16, 1)
+        write12.text("Extending", 20, 49, bgcolor=1, color=0)
     elif angle < -deadzone:
         deadzone_deg = round(math.degrees(deadzone))
         angle_deg = round(math.degrees(angle))
@@ -304,10 +305,18 @@ def draw_rotary_encoder(rotary_counter):
             inner_x = round(centre_x + inner_radius * math.sin(a))
             inner_y = round(centre_y - inner_radius * math.cos(a))
             oled.line(inner_x, inner_y, outer_x, outer_y, 1)
+        oled.fill_rect(0, 48, 75, 64, 0)
+        oled.fill_rect(10, 48, 60, 16, 1)
+        write12.text("Retracting", 18, 49, bgcolor=1, color=0)
+    else:
+        oled.fill_rect(0, 48, 75, 64, 0)
+        oled.rect(10, 48, 60, 16, 1)
+        write12.text("Motor off", 20, 49, 1)
+            
     #micropython.mem_info()
-    oled.show()
+    #oled.show()
     
-# mode_debug = True
+mode_debug = True
 #def test_draw_rotary_encoder():
 #    while True:
 #        #draw_status_bar()
@@ -424,9 +433,8 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
         utime.sleep(step_sleep)
     action_in_progress = False
 
-time_since_presence = 0 # used for exiting DEBUG mode after action_after_seconds
 def main():
-    global action_in_progress, mode_debug, mode_manual, mode_switch, rotary_counter, time_since_presence
+    global action_in_progress, mode_debug, mode_manual, mode_switch, rotary_counter
     while True:
         # initialise
         motor_cleanup()
@@ -520,15 +528,15 @@ def main():
                 #if motor_retract_revolutions != 0:
                 #    pass
                 draw_status_bar()
-                draw_rotary_encoder(rotary_counter)
-                #oled.show() # this is done in draw_rotary_encoder()
-                utime.sleep(polling_interval_presence)
+                micropython.schedule(draw_rotary_encoder, rotary_counter)
+                oled.show()
+                utime.sleep(polling_interval_presence/3)
                 presence_detected = detect_presence()
                 time_since_presence = 0
                 while not presence_detected:
                     draw_status_bar()
                     micropython.schedule(draw_rotary_encoder, rotary_counter)
-                    #oled.show()
+                    oled.show()
                     if mode_switch:
                         break
                     if time_since_presence >= action_after_seconds:
@@ -536,8 +544,8 @@ def main():
                         mode_debug = False
                         mode_switch = True
                         break
-                    utime.sleep(polling_interval_presence)
-                    time_since_presence += polling_interval_presence
+                    utime.sleep(polling_interval_presence/3)
+                    time_since_presence += polling_interval_presence/3
                     presence_detected = detect_presence()
 
 def show_something():
