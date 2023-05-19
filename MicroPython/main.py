@@ -273,7 +273,7 @@ def detect_presence():
     return presence_detected
 
 def draw_rotary_encoder(rotary_counter):
-    global button_pushed
+    global button_pushed, motor_retract_revolutions
     circle_radius = 20
     centre_x = 100
     centre_y = 39
@@ -327,11 +327,12 @@ def draw_rotary_encoder(rotary_counter):
         # stop the motor if dial is moved into deadzone during DEBUG mode automatic retraction (which happens after switching from MANUAL to DEBUG)
         if mode_debug and not mode_manual and action_in_progress:
             button_pushed = True
+            motor_retract_revolutions = 0
             
     #micropython.mem_info()
     #oled.show()
     
-mode_debug = True
+#mode_debug = True
 #def test_draw_rotary_encoder():
 #    while True:
 #        #draw_status_bar()
@@ -444,12 +445,14 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
                 motor_retract_revolutions -= i/steps_per_revolution
             button_pushed = False
             action_in_progress = False
+            #_thread.exit()
             break
         utime.sleep(step_sleep)
     action_in_progress = False
+    #_thread.exit()
 
 def main():
-    global action_in_progress, mode_debug, mode_manual, mode_switch, rotary_counter
+    global action_in_progress, mode_debug, mode_manual, mode_switch, motor_direction, rotary_counter
     while True:
         # initialise
         motor_cleanup()
@@ -500,7 +503,7 @@ def main():
                 # Dewit
                 print("CLOSING THE SEAT WOOOO")
                 action_in_progress = True
-                #utime.sleep(5)
+                motor_direction = True
                 thread_id = _thread.start_new_thread(motor_spin, ())
                 while action_in_progress:
                     for i in 1,2,3:
@@ -540,20 +543,22 @@ def main():
                     mode_switch = False
                     break
                 # revert motor if ongoing action has been cancelled
-                if motor_retract_revolutions > 0:
+                if motor_retract_revolutions > 0 and not action_in_progress:
                     rotary_counter = -4
                     motor_direction = False
                     action_in_progress = True
-                    thread_id = _thread.start_new_thread(motor_spin, ())
+                    thread_id = _thread.start_new_thread(motor_spin, (motor_retract_revolutions,))
                 draw_status_bar()
-                micropython.schedule(draw_rotary_encoder, rotary_counter)
+                #micropython.schedule(draw_rotary_encoder, rotary_counter)
+                draw_rotary_encoder(rotary_counter)
                 oled.show()
                 utime.sleep(polling_interval_presence/3)
                 presence_detected = detect_presence()
                 time_since_presence = 0
                 while not presence_detected:
                     draw_status_bar()
-                    micropython.schedule(draw_rotary_encoder, rotary_counter)
+                    #micropython.schedule(draw_rotary_encoder, rotary_counter)
+                    draw_rotary_encoder(rotary_counter)
                     oled.show()
                     if mode_switch:
                         break
