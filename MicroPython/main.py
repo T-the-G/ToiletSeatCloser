@@ -283,7 +283,7 @@ def draw_rotary_encoder(rotary_counter):
     centre_x = 100
     centre_y = 39
     oled.fill_rect(80, 13, 128, 64, 0)
-    angle = rotary_counter * 2 * math.pi / 20
+    angle = rotary_counter * micropython.const(2 * math.pi / 20)
     # draw the circle
     oled.ellipse(centre_x, centre_y, circle_radius, circle_radius, 1)
     # draw the deadzone
@@ -334,26 +334,8 @@ def draw_rotary_encoder(rotary_counter):
             oled.fill_rect(0, 48, 75, 64, 0)
             oled.rect(10, 48, 60, 16, 1)
             write12.text("Motor off", 20, 49, 1)
-        # stop the motor if dial is moved into deadzone during DEBUG mode automatic retraction (which happens after switching from MANUAL to DEBUG)
-        #if mode_debug and not mode_manual and action_in_progress:
-        #    button_pushed = True
-        #    motor_retract_revolutions = 0
-            
-    #micropython.mem_info()
-    #oled.show()
-
-
-#mode_debug = True
-#def test_draw_rotary_encoder():
-#    while True:
-#        #draw_status_bar()
-#        #draw_rotary_encoder(rotary_counter)
-#        #clear_screen()
-#        utime.sleep(1)
-    
 
 def draw_status_bar(): # display stuff at the top of the oled screen
-    #global mode_debug, mode_manual
     oled.fill_rect(0, 0, 128, 15, 0)
     battery_percentage = measure_battery()
     select_battery_icon = get_battery_icon(battery_percentage)
@@ -457,14 +439,36 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
             elif motor_direction == False:
                 motor_retract_revolutions -= i/steps_per_revolution
             button_pushed = False
-            action_in_progress = False
             motor_cleanup()
+            action_in_progress = False
             machine.enable_irq(irq_state)
             #_thread.exit()
             break
         utime.sleep(step_sleep)
-    action_in_progress = False
     motor_cleanup()
+    action_in_progress = False
+    #_thread.exit()
+    
+def motor_spin_debug(step_sleep=step_sleep_retract):
+    print("MOTOR SPINNING from motor_spin_debug thread")
+    gc.collect()
+    global action_in_progress, motor_direction
+    motor_step_counter = 0
+    motor_cleanup()
+    while abs(rotary_counter * micropython.const(2 * math.pi / 20)) > deadzone:
+        for pin in range(0, len(motor_pins)):
+            motor_pins[pin].value(step_sequence[motor_step_counter][pin])
+        if motor_direction==True:
+            motor_step_counter = (motor_step_counter - 1) % 4
+        elif motor_direction==False:
+            motor_step_counter = (motor_step_counter + 1) % 4
+        else: # defensive programming
+            print( "uh oh... direction should *always* be either True or False" )
+            motor_cleanup()
+            exit(1)
+        utime.sleep(step_sleep)
+    motor_cleanup()
+    action_in_progress = False
     #_thread.exit()
 
 def main():
@@ -567,18 +571,33 @@ def main():
                     action_in_progress = True
                     thread_id = _thread.start_new_thread(motor_spin, (motor_retract_revolutions,))
                     motor_retract_revolutions = 0
+                # rotate motor if rotary encoder has been turned beyond the deadzone
+                rotary_angle = rotary_counter * micropython.const(2 * math.pi / 20)
+                if rotary_angle > deadzone and not action_in_progress:
+                    motor_direction = True
+                    action_in_progress = True
+                    print("starting new closing motion")
+                    thread_id = _thread.start_new_thread(motor_spin_debug, (step_sleep_close,))
+                elif rotary_angle < -deadzone and not action_in_progress:
+                    motor_direction = False
+                    action_in_progress = True
+                    print("starting new retracting motion")
+                    thread_id = _thread.start_new_thread(motor_spin_debug, (step_sleep_retract,))
                 draw_status_bar()
                 #micropython.schedule(draw_rotary_encoder, rotary_counter)
                 draw_rotary_encoder(rotary_counter)
                 oled.show()
+                #print("action in progress (debug presence): ", action_in_progress)
                 utime.sleep(polling_interval_presence/3)
                 presence_detected = detect_presence()
                 time_since_presence = 0
-                while not presence_detected:
+                while not presence_detected and not abs(rotary_angle) > deadzone:
+                    rotary_angle = rotary_counter * micropython.const(2 * math.pi / 20)
                     draw_status_bar()
                     #micropython.schedule(draw_rotary_encoder, rotary_counter)
                     draw_rotary_encoder(rotary_counter)
                     oled.show()
+                    #print("action in progress (debug NO presence): ", action_in_progress)
                     if mode_switch:
                         break
                     if time_since_presence >= action_after_seconds:
