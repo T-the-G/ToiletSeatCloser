@@ -1,5 +1,5 @@
 # General modules
-from machine import Pin, I2C, ADC, deepsleep
+from machine import Pin, I2C, ADC
 import utime
 import math
 import _thread
@@ -24,7 +24,7 @@ motion_threshold            = micropython.const(5)      # difference in distance
 polling_interval_presence   = micropython.const(1)      # seconds between polling when presence has been detected
 polling_interval_standby    = micropython.const(5)      # seconds between polling during standby
 previous_distance           = micropython.const(165)    # initialise typical distance (cm) measured when nobody is in the restroom
-oled_dim                    = micropython.const(100)    # value between 0 (dimmest) and 255 (brightest) to dim the oled display  
+oled_dim                    = micropython.const(100)    # value between 0 (dimmest) and 255 (brightest) to dim the oled display
 
 ###################
 #   Define pins   #
@@ -70,7 +70,7 @@ oled_height = micropython.const(64)
 i2c=I2C(0, scl=pin_oled_scl, sda=pin_oled_sda, freq=400000)
 oled = SSD1306_I2C(oled_width, oled_height, i2c)
 oled.contrast(oled_dim)
-# import fonts
+# fonts
 write12 = Write(oled, ubuntu_condensed_12)
 write15 = Write(oled, ubuntu_mono_15)
 write20 = Write(oled, ubuntu_mono_20)
@@ -117,7 +117,7 @@ toilet_icon = framebuf.FrameBuffer(toilet_icon_array, 55, 55, framebuf.MONO_HLSB
 steps_per_revolution        = micropython.const(2048)      # stepper motor steps per revolution
 step_sleep_close            = micropython.const(0.003)     # seconds between stepper motor steps during lid close action
 step_sleep_retract          = micropython.const(0.002)     # seconds between stepper motor steps during retract action
-motor_direction=False # True for clockwise (retracting arm), False for counter-clockwise (closing seat) (as seen when looking from the back of the motor)
+motor_direction=True # True for clockwise (closing seat), False for counter-clockwise (retracting arm) (as seen when looking from the back of the motor)
 motor_retract_revolutions = 0 # If the action is interrupted, reverse the motor by this amount of revolutions
 step_sequence = [[1,0,0,0],
                  [0,1,0,0],
@@ -411,9 +411,9 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
         if button_pushed:
             irq_state = machine.disable_irq()
             motor_cleanup()
-            if motor_direction == True:
+            if motor_direction == False:
                 motor_retract_revolutions = i/steps_per_revolution
-            elif motor_direction == False:
+            elif motor_direction == True:
                 motor_retract_revolutions -= i/steps_per_revolution
             button_pushed = False
             motor_cleanup()
@@ -429,10 +429,10 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
 def motor_spin_debug(step_sleep=step_sleep_retract):
     print("MOTOR SPINNING from motor_spin_debug thread")
     gc.collect()
-    global action_in_progress, motor_direction
+    global action_in_progress, button_pushed, motor_direction
     motor_step_counter = 0
     motor_cleanup()
-    while abs(rotary_counter * micropython.const(2 * math.pi / 20)) > deadzone:
+    while abs(rotary_counter * micropython.const(2 * math.pi / 20)) > deadzone and not button_pushed:
         for pin in range(0, len(motor_pins)):
             motor_pins[pin].value(step_sequence[motor_step_counter][pin])
         if motor_direction==True:
@@ -445,6 +445,7 @@ def motor_spin_debug(step_sleep=step_sleep_retract):
             exit(1)
         utime.sleep(step_sleep)
     motor_cleanup()
+    button_pushed = False
     action_in_progress = False
     #_thread.exit()
 
@@ -489,6 +490,10 @@ def main():
         # MANUAL mode
         if not mode_debug and mode_manual:
             while True:
+                if mode_switch:
+                    clear_screen()
+                    mode_switch = False
+                    break
                 # initialise
                 motor_cleanup()
                 oled.fill(0)
@@ -580,4 +585,3 @@ pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt, hard=True) # 
 #   Execute   #
 ###############
 main()
-
