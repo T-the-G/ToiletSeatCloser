@@ -36,7 +36,7 @@ This bill of materials is based on components I had lying around. It is perfectl
 | Item        | Quantity  | Description   | 
 | :---        | :----       | :---        |
 | RaspberryPi Pico            | 1     | Controlls the device  |
-| 28BYJ stepper motor         | 1     | Actuates the arm      |
+| 28BYJ-48 stepper motor      | 1     | Actuates the arm      |
 | ULN2003 based driver board  | 1     | For driving the 28BYJ stepper motor |
 | SFH 300 phototransistor     | 1     | For detecting the ambient light level |
 | HC-SR04 ultrasonic distance sensor  | 1     | For detecting movement |
@@ -49,10 +49,10 @@ This bill of materials is based on components I had lying around. It is perfectl
 | Small breadboard            | 1     | Used as a motherboard, has 400 pinholes, measures approximately 82\*54\*9mm |
 | 22AWG wires                 | 1     | For connecting components on the breadboards |
 | Breadboard pin headers      | 2     | For connecting the DC-DC stepdown module to the mini breadboard |
-| 680kΩ resistor              | 2     | Used in the 11.1V-to-5V and 11.1V-to-3V voltage dividers |
-| 470kΩ resistor              | 1     | Used in the 11.1V-to-5V voltage divider |
-| 220kΩ resistor              | 1     | Used in the 11.1V-to-3V voltage divider |
-| 100kΩ resistor              | 1     | Used for the SFH 300 phototransistor |
+| 1MΩ resistor                | 1     | Used in the 11.1V-to-5V voltage divider |
+| 680KΩ resistor              | 2     | Used in the 11.1V-to-5V and 11.1V-to-3V voltage dividers |
+| 220KΩ resistor              | 2     | Used in the 11.1V-to-5V and 11.1V-to-3V voltage dividers |
+| 100KΩ resistor              | 1     | Used for the SFH 300 phototransistor |
 
 ## Fasteners and other mechanical parts
 
