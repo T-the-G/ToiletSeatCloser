@@ -1,4 +1,4 @@
-# General libraries
+# General modules
 from machine import Pin, I2C, ADC
 import utime
 import math
@@ -6,7 +6,7 @@ import _thread
 import micropython
 import gc
 gc.enable()
-# SSD1300 OLED display, install the following packages from PyPI:
+# SSD1300 OLED display, install the following modules from PyPI:
 # micropython-ssd1306 by Stefan Lehmann
 # micropython-oled by Yeison Cardona 
 from ssd1306 import SSD1306_I2C, framebuf
@@ -18,15 +18,13 @@ micropython.alloc_emergency_exception_buf(100)
 ####################################
 # Variables that need callibration #
 ####################################
-action_after_seconds        = 60       # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
-brightness_threshold        = 99        # phototransistor brightness (%) threshold for detecting restroom light
-motion_threshold            = 5         # difference in distance (cm) between successive measurements to detect motion 
-polling_interval_presence   = 1         # seconds between polling when presence has been detected
-polling_interval_standby    = 5         # seconds between polling during standby
-previous_distance           = 165       # initialise typical distance (cm) measured when nobody is in the restroom
-steps_per_revolution        = 2048      # stepper motor steps per revolution
-step_sleep_close            = 0.003     # seconds between stepper motor steps during lid close action
-step_sleep_retract          = 0.002     # seconds between stepper motor steps during retract action
+action_after_seconds        = micropython.const(60)     # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
+brightness_threshold        = micropython.const(99)     # phototransistor brightness (%) threshold for detecting restroom light
+motion_threshold            = micropython.const(5)      # difference in distance (cm) between successive measurements to detect motion 
+polling_interval_presence   = micropython.const(1)      # seconds between polling when presence has been detected
+polling_interval_standby    = micropython.const(5)      # seconds between polling during standby
+previous_distance           = micropython.const(165)    # initialise typical distance (cm) measured when nobody is in the restroom
+oled_dim                    = micropython.const(100)    # value between 0 (dimmest) and 255 (brightest) to dim the oled display  
 
 ###################
 #   Define pins   #
@@ -66,12 +64,13 @@ mode_switch         = False # used in the main function to break out of loops
 ######################
 #   Setup the OLED   #
 ######################
-oled_width = 128
-oled_height = 64
+oled_width = micropython.const(128)
+oled_height = micropython.const(64)
 # the first argument of I2C is the set of i2c pins which should be initialised
 i2c=I2C(0, scl=pin_oled_scl, sda=pin_oled_sda, freq=400000)
 oled = SSD1306_I2C(oled_width, oled_height, i2c)
-# fonts
+oled.contrast(oled_dim)
+# import fonts
 write12 = Write(oled, ubuntu_condensed_12)
 write15 = Write(oled, ubuntu_mono_15)
 write20 = Write(oled, ubuntu_mono_20)
@@ -101,13 +100,6 @@ class lightbulb_icon:
         }
 lightbulb = Write(oled, lightbulb_icon)
 
-## Ruler icon
-#class ruler_icon:
-#    _FONT = {
-#        'ruler': [16, 4291035135, 4278255615, 4228120575, 4026732543, 4026545151, 4227859455, 4278193983, 4290773055, 4293918915, 4294705152, 4294901760, 4294950915, 4294963215, 4294966335, 4294967295],
-#        }
-#ruler = Write(oled, ruler_icon)
-
 # Horizontal arrows icon (might look better than the ruler icon)
 class horizontal_arrows_icon:
     _FONT = {
@@ -115,26 +107,17 @@ class horizontal_arrows_icon:
         }
 arrows = Write(oled, horizontal_arrows_icon)
 
-## test static icons
-#oled.fill(0)
-#oled.contrast(0)    # dim
-#lightbulb.char('lightbulb', 50, 0)
-##ruler.char('ruler', 0, 0)
-#arrows.char('arrows-alt-h', 100, 0)
-#oled.show()
-
 # Toilet icon
 toilet_icon_array = bytearray(b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xe0\x00\x00\x00\x00\x00\x00\xa0\x00\x00\x00\x00\x00\x07\xfc\x00\x00\x00\x00\x00\x0c\x06\x00\x00\x00\x00\x00\x18\x02\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x10\x01\xff\xff\xf8\x00\x00\x10\x01\x80\x00\x04\x00\x00\x1f\xff\xff\xff\xfc\x00\x00\x10\x00\x00\x00\x04\x00\x00\x10\x00\x00\x00\x04\x00\x00\x10\x00\x00\x00\x04\x00\x00\x08\x00\x00\x00\x08\x00\x00\x08\x00\x00\x00\x10\x00\x00\x04\x00\x00\x00`\x00\x00\x06\x00\x00\x01\x80\x00\x00\x02\x00\x00\x03\x00\x00\x00\x01\x00\x00\x04\x00\x00\x00\x00\x80\x00\x08\x00\x00\x00\x00@\x00\x18\x00\x00\x00\x00@\x00\x10\x00\x00\x00\x00 \x00\x10\x00\x00\x00\x00 \x00 \x00\x00\x00\x00 \x00 \x00\x00\x00\x00 \x00 \x00\x00\x00\x00`\x00 \x00\x00\x00\x00@\x00 \x00\x00\x00\x00@\x00\x10\x00\x00\x00\x00\xc0\x00\x10\x00\x00\x00\x00\x80\x00\x08\x00\x00\x00\x00\x80\x00\x08\x00\x00\x00\x00\xff\xff\xf0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
 toilet_icon = framebuf.FrameBuffer(toilet_icon_array, 55, 55, framebuf.MONO_HLSB)
 
-## test toilet icon
-#oled.blit(toilet_icon, 82, 12)
-#oled.show()
-
 ###########################
 # Setup the stepper motor #
 ###########################
-motor_direction=True # True for clockwise (closing seat), False for counter-clockwise (retracting arm) (as seen when looking from the back of the motor)
+steps_per_revolution        = micropython.const(2048)      # stepper motor steps per revolution
+step_sleep_close            = micropython.const(0.003)     # seconds between stepper motor steps during lid close action
+step_sleep_retract          = micropython.const(0.002)     # seconds between stepper motor steps during retract action
+motor_direction=False # True for clockwise (retracting arm), False for counter-clockwise (closing seat) (as seen when looking from the back of the motor)
 motor_retract_revolutions = 0 # If the action is interrupted, reverse the motor by this amount of revolutions
 step_sequence = [[1,0,0,0],
                  [0,1,0,0],
@@ -147,11 +130,9 @@ motor_pins = [pin_motor_1, pin_motor_2, pin_motor_3, pin_motor_4]
 ############################
 last_button_time    = 0 # last time the button was pushed
 rotary_counter      = 0 # position of the knob, 20 steps per 360 degrees
-#last_clk_time       = 0 # last time the clk interrupt occured
-#last_dt_time        = 0 # last time the dt interrupt occured
 last_rotation_time  = 0 # last time either dt or clk interrupt occured
-deadzone            = math.radians(40)  # rotation deadzone, 18 degrees per step, so 40 degrees is about two steps in either direction
-max_rotation_steps  = 10    # limit how many steps in either direction can be made, 10 steps is half a rotation
+deadzone            = micropython.const(math.radians(40))   # rotation deadzone, 18 degrees per step, so 40 degrees is about two steps in either direction
+max_rotation_steps  = micropython.const(10)                 # limit how many steps in either direction can be made, 10 steps is half a rotation
 
 #################
 #   Functions   #
@@ -209,7 +190,6 @@ def clk_interrupt(pin):
         last_rotation_time = new_rotation_time
     # immediately stop motor if retraction is in progress during debug mode
     if action_in_progress:
-        #print("ROTARY COUNTER: ", rotary_counter)
         button_pushed = True
     # don't register more than half a rotation
     if rotary_counter >= max_rotation_steps:
@@ -239,7 +219,6 @@ def dt_interrupt(pin):
         last_rotation_time = new_rotation_time
     # immediately stop motor if retraction is in progress during debug mode
     if action_in_progress:
-        #print("ROTARY COUNTER: ", rotary_counter)
         button_pushed = True
     # don't register more than half a rotation
     if rotary_counter <= -max_rotation_steps:
@@ -278,7 +257,6 @@ def detect_presence():
 
 def draw_rotary_encoder(rotary_counter):
     global button_pushed, motor_retract_revolutions
-    #micropython.mem_info()
     circle_radius = 20
     centre_x = 100
     centre_y = 39
@@ -326,7 +304,7 @@ def draw_rotary_encoder(rotary_counter):
         oled.fill_rect(10, 48, 60, 16, 1)
         write12.text("Retracting", 18, 49, bgcolor=1, color=0)
     else:
-        if action_in_progress:
+        if action_in_progress: # automatic retract when switching from MANUAL mode to DEBUG mode should show "Retracting"
             oled.fill_rect(0, 48, 75, 64, 0)
             oled.fill_rect(10, 48, 60, 16, 1)
             write12.text("Retracting", 18, 49, bgcolor=1, color=0)
@@ -433,7 +411,6 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
         if button_pushed:
             irq_state = machine.disable_irq()
             motor_cleanup()
-            #print("Motor interrupted from motor_spin thread")
             if motor_direction == True:
                 motor_retract_revolutions = i/steps_per_revolution
             elif motor_direction == False:
@@ -483,6 +460,7 @@ def main():
             clear_screen()
             presence_detected = detect_presence()
             while presence_detected:
+                # switch modes if button has been pushed
                 if mode_switch:
                     clear_screen()
                     mode_switch = False
@@ -506,14 +484,11 @@ def main():
                     presence_detected = detect_presence()
             if not mode_switch:
                 utime.sleep(polling_interval_standby)
+                #machine.deepsleep(micropython.const(polling_interval_standby*1000))
 
         # MANUAL mode
         if not mode_debug and mode_manual:
             while True:
-                if mode_switch:
-                    clear_screen()
-                    mode_switch = False
-                    break
                 # initialise
                 motor_cleanup()
                 oled.fill(0)
@@ -523,7 +498,7 @@ def main():
                 # Dewit
                 print("CLOSING THE SEAT from MANUAL mode")
                 action_in_progress = True
-                motor_direction = True
+                motor_direction = False
                 thread_id = _thread.start_new_thread(motor_spin, ())
                 while action_in_progress:
                     for i in 1,2,3:
@@ -534,31 +509,15 @@ def main():
                 #print("Switching back to AUTO mode")
                 mode_manual = False
                 break
-                #presence_detected = detect_presence()
-                #time_since_presence = 0
-                #while not presence_detected:
-                #    if mode_switch:
-                #        break
-                #    if time_since_presence >= action_after_seconds:
-                #        print("Switching back to AUTO mode")
-                #        clear_screen()
-                #        mode_manual = False
-                #        mode_switch = True
-                #        break
-                #    utime.sleep(polling_interval_presence)
-                #    time_since_presence += polling_interval_presence
-                #    presence_detected = detect_presence()
 
         # DEBUG mode
         if mode_debug and not mode_manual:
             # initialise
-            #gc.collect()
             motor_cleanup()
             rotary_counter = 0
             oled.fill(0)
             write15.text("DEBUG mode", 0, 25)
             while True:
-                #gc.collect()
                 # switch modes if button has been pushed
                 if mode_switch:
                     clear_screen()
@@ -567,37 +526,33 @@ def main():
                 # revert motor if ongoing action has been cancelled
                 if motor_retract_revolutions > 0 and not action_in_progress:
                     rotary_counter = 0
-                    motor_direction = False
+                    motor_direction = True
                     action_in_progress = True
                     thread_id = _thread.start_new_thread(motor_spin, (motor_retract_revolutions,))
                     motor_retract_revolutions = 0
                 # rotate motor if rotary encoder has been turned beyond the deadzone
                 rotary_angle = rotary_counter * micropython.const(2 * math.pi / 20)
                 if rotary_angle > deadzone and not action_in_progress:
-                    motor_direction = True
+                    motor_direction = False
                     action_in_progress = True
                     print("starting new closing motion")
                     thread_id = _thread.start_new_thread(motor_spin_debug, (step_sleep_close,))
                 elif rotary_angle < -deadzone and not action_in_progress:
-                    motor_direction = False
+                    motor_direction = True
                     action_in_progress = True
                     print("starting new retracting motion")
                     thread_id = _thread.start_new_thread(motor_spin_debug, (step_sleep_retract,))
                 draw_status_bar()
-                #micropython.schedule(draw_rotary_encoder, rotary_counter)
                 draw_rotary_encoder(rotary_counter)
                 oled.show()
-                #print("action in progress (debug presence): ", action_in_progress)
                 utime.sleep(polling_interval_presence/3)
                 presence_detected = detect_presence()
                 time_since_presence = 0
                 while not presence_detected and not abs(rotary_angle) > deadzone:
                     rotary_angle = rotary_counter * micropython.const(2 * math.pi / 20)
                     draw_status_bar()
-                    #micropython.schedule(draw_rotary_encoder, rotary_counter)
                     draw_rotary_encoder(rotary_counter)
                     oled.show()
-                    #print("action in progress (debug NO presence): ", action_in_progress)
                     if mode_switch:
                         break
                     if time_since_presence >= action_after_seconds:
@@ -619,21 +574,10 @@ def show_something():
 ########################
 pin_ky040_clk.irq(trigger=Pin.IRQ_FALLING, handler=clk_interrupt, hard=True)
 pin_ky040_dt.irq(trigger=Pin.IRQ_FALLING, handler=dt_interrupt, hard=True)
-pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt, hard=True)
-
+pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt, wake=machine.DEEPSLEEP, hard=True) # this is the push button
 
 ###############
 #   Execute   #
 ###############
-#while True:
-#    presence = detect_presence()
-#    #print("The distance from object is ", distance, "cm")
-#    #print("The brightness is ", brightness)
-#    print("Presence detected: ", presence)
-#    #motor_spin()
-#    #motor_cleanup()
-#    utime.sleep(1)
-
-#test()
 main()
-#show_something()
+
