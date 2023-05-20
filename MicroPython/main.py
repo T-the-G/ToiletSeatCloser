@@ -19,6 +19,7 @@ micropython.alloc_emergency_exception_buf(100)
 # Variables that need callibration #
 ####################################
 action_after_seconds        = micropython.const(60)     # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
+action_revolutions            = micropython.const(2)      # stepper motor rotations required to close the toilet lid
 brightness_threshold        = micropython.const(99)     # phototransistor brightness (%) threshold for detecting restroom light
 motion_threshold            = micropython.const(5)      # difference in distance (cm) between successive measurements to detect motion 
 polling_interval_presence   = micropython.const(1)      # seconds between polling when presence has been detected
@@ -450,7 +451,7 @@ def motor_spin_debug(step_sleep=step_sleep_retract):
     #_thread.exit()
 
 def main():
-    global action_in_progress, mode_debug, mode_manual, mode_switch, motor_direction, motor_retract_revolutions, rotary_counter
+    global action_in_progress, button_pushed, mode_debug, mode_manual, mode_switch, motor_direction, motor_retract_revolutions, rotary_counter
     while True:
 
         # AUTO mode
@@ -466,19 +467,38 @@ def main():
                     clear_screen()
                     mode_switch = False
                     break
+                # revert motor if action is ongoing and presence is detected
+                if motor_retract_revolutions > 0 and action_in_progress:
+                    button_pushed = True # cancel the ongoing motor thread
+                    utime.sleep(0.3)
+                    motor_direction = True
+                    action_in_progress = True
+                    thread_id = _thread.start_new_thread(motor_spin, (motor_retract_revolutions, step_sleep_retract))
                 show_something() # DISPLAY SOMETHING NICE
                 draw_status_bar()
                 oled.show()
                 utime.sleep(polling_interval_presence)
                 presence_detected = detect_presence()
                 time_since_presence = 0
-                while not presence_detected:
+                while not presence_detected and not action_in_progress:
                     if mode_switch:
                         break
-                    if time_since_presence >= action_after_seconds:
-                        #perform_action = True
+                    if time_since_presence >= action_after_seconds and not action_in_progress:
                         # Dewit
                         print("CLOSING THE SEAT from AUTO mode")
+                        action_in_progress = True
+                        motor_direction = False
+                        thread_id = _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_close))
+                        # wait for closing to finish, then retract motor
+                        presence_detected = detect_presence()
+                        while action_in_progress and not presence_detected and not mode_switch:
+                            utime.sleep(1)
+                            presence_detected = detect_presence()
+                        # closing has finished, now retract
+                        if not action_in_progress and not presence_detected and not mode_switch:
+                            action_in_progress = True
+                            motor_direction = True
+                            thread_id = _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_retract))
                         break
                     utime.sleep(polling_interval_presence)
                     time_since_presence += polling_interval_presence
@@ -489,29 +509,44 @@ def main():
 
         # MANUAL mode
         if not mode_debug and mode_manual:
+            # initialise
+            motor_retract_revolutions = 0
+            motor_cleanup()
+            oled.fill(0)
+            draw_status_bar()
+            write15.text("MANUAL mode", 0, 25)
+            oled.show()
             while True:
                 if mode_switch:
                     clear_screen()
                     mode_switch = False
                     break
-                # initialise
-                motor_cleanup()
-                oled.fill(0)
-                draw_status_bar()
-                write15.text("MANUAL mode", 0, 25)
-                oled.show()
-                # Dewit
+                # Close the lid
                 print("CLOSING THE SEAT from MANUAL mode")
                 action_in_progress = True
                 motor_direction = False
-                thread_id = _thread.start_new_thread(motor_spin, ())
-                while action_in_progress:
+                thread_id = _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_close))
+                oled.fill_rect(0, 48, 75, 64, 0)
+                oled.fill_rect(10, 48, 60, 16, 1)
+                write12.text("Extending", 20, 49, bgcolor=1, color=0)
+                while action_in_progress and not mode_switch:
                     for i in 1,2,3:
                         draw_toilet(i)
                         oled.show()
-                        if mode_switch: break
                         utime.sleep(1)
-                #print("Switching back to AUTO mode")
+                # closing has finished, now retract
+                if not action_in_progress and not mode_switch:
+                    action_in_progress = True
+                    motor_direction = True
+                    thread_id = _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_retract))
+                oled.fill_rect(0, 48, 75, 64, 0)
+                oled.fill_rect(10, 48, 60, 16, 1)
+                write12.text("Retracting", 18, 49, bgcolor=1, color=0)
+                while action_in_progress and not mode_switch:
+                    for i in 1,2,3:
+                        draw_toilet(i)
+                        oled.show()
+                        utime.sleep(1)
                 mode_manual = False
                 break
 
@@ -522,6 +557,7 @@ def main():
             rotary_counter = 0
             oled.fill(0)
             write15.text("DEBUG mode", 0, 25)
+            oled.show()
             while True:
                 # switch modes if button has been pushed
                 if mode_switch:
