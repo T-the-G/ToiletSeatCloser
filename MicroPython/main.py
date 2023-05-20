@@ -4,6 +4,8 @@ import utime
 import math
 import _thread
 import micropython
+import gc
+gc.enable()
 # SSD1300 OLED display, install the following packages from PyPI:
 # micropython-ssd1306 by Stefan Lehmann
 # micropython-oled by Yeison Cardona 
@@ -11,14 +13,13 @@ from ssd1306 import SSD1306_I2C, framebuf
 from oled import Write
 from oled.fonts import ubuntu_mono_15, ubuntu_mono_20, ubuntu_condensed_12
 # handle interrupts
-#from micropython import alloc_emergency_exception_buf, schedule
 micropython.alloc_emergency_exception_buf(100)
 
 ####################################
 # Variables that need callibration #
 ####################################
 action_after_seconds        = 60       # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
-brightness_threshold        = 60        # phototransistor brightness (%) threshold for detecting restroom light
+brightness_threshold        = 99        # phototransistor brightness (%) threshold for detecting restroom light
 motion_threshold            = 5         # difference in distance (cm) between successive measurements to detect motion 
 polling_interval_presence   = 1         # seconds between polling when presence has been detected
 polling_interval_standby    = 5         # seconds between polling during standby
@@ -146,8 +147,8 @@ motor_pins = [pin_motor_1, pin_motor_2, pin_motor_3, pin_motor_4]
 ############################
 last_button_time    = 0 # last time the button was pushed
 rotary_counter      = 0 # position of the knob, 20 steps per 360 degrees
-last_clk_time       = 0 # last time the clk interrupt occured
-last_dt_time        = 0 # last time the dt interrupt occured
+#last_clk_time       = 0 # last time the clk interrupt occured
+#last_dt_time        = 0 # last time the dt interrupt occured
 last_rotation_time  = 0 # last time either dt or clk interrupt occured
 deadzone            = math.radians(40)  # rotation deadzone, 18 degrees per step, so 40 degrees is about two steps in either direction
 max_rotation_steps  = 10    # limit how many steps in either direction can be made, 10 steps is half a rotation
@@ -157,17 +158,18 @@ max_rotation_steps  = 10    # limit how many steps in either direction can be ma
 #################
 
 def button_interrupt(pin):
+    irq_state = machine.disable_irq()
     global button_pushed, last_button_time, mode_debug, mode_manual, mode_switch
     # <debounce>
     new_button_time = utime.ticks_ms()
-    #if (new_button_time - last_button_time) < 200:
     if utime.ticks_diff(new_button_time, last_button_time) < 200:
+        machine.enable_irq(irq_state)
         return
     else:
         last_button_time = new_button_time
     # </debounce>
     button_pushed = True
-    print("BUTTON PUSHED WOOOOOOO")
+    print("BUTTON PUSHED from button_interrupt")
     # switch from AUTO to MANUAL
     if not mode_debug and not mode_manual:
         mode_manual = True
@@ -187,70 +189,69 @@ def button_interrupt(pin):
         write15.text("State machine error", 0, 0)
         oled.show()
         print("State machine error")
+        machine.enable_irq(irq_state)
         exit(1)
+    machine.enable_irq(irq_state)
 
 def clk_interrupt(pin):
-    global last_clk_time, rotary_counter, last_rotation_time
+    irq_state = machine.disable_irq()
+    global button_pushed, last_rotation_time, rotary_counter
     # only do something in DEBUG mode
     if not mode_debug:
+        machine.enable_irq(irq_state)
         return
-    # <debounce>
-    #new_clk_time = utime.ticks_ms()
-    #if (new_clk_time - last_clk_time) < 20:
-    #    return
-    #else:
-    #    last_clk_time = new_clk_time
-    #new_clk_time = utime.ticks_ms()
+    # debounce
     new_rotation_time = utime.ticks_ms()
-    #if (new_rotation_time - last_rotation_time) < 20:
     if utime.ticks_diff(new_rotation_time, last_rotation_time) < 20:
+        machine.enable_irq(irq_state)
         return
     else:
-        last_rotation_time = new_rotation_time   
-    # </debounce>
+        last_rotation_time = new_rotation_time
+    # immediately stop motor if retraction is in progress during debug mode
+    if action_in_progress:
+        #print("ROTARY COUNTER: ", rotary_counter)
+        button_pushed = True
     # don't register more than half a rotation
     if rotary_counter >= max_rotation_steps:
         rotary_counter = max_rotation_steps
+        machine.enable_irq(irq_state)
         return
+    # Increment counter
     clk_state   = pin_ky040_clk.value()
     dt_state    = pin_ky040_dt.value()
-    #print("clk_interrupt    dt: ", dt_state, " clk: ", clk_state)
     if clk_state == 0 and dt_state == 1:
         rotary_counter += 1
-        #print ("Counter ", rotary_counter)
-    #draw_rotary_encoder(rotary_counter)
-    #micropython.schedule(draw_rotary_encoder, rotary_counter)
+    machine.enable_irq(irq_state)
 
 def dt_interrupt(pin):
-    global last_dt_time, rotary_counter, last_rotation_time
+    irq_state = machine.disable_irq()
+    global button_pushed, last_rotation_time, rotary_counter
     # only do something in DEBUG mode
     if not mode_debug:
+        machine.enable_irq(irq_state)
         return
     # <debounce>
-    #new_dt_time = utime.ticks_ms()
-    #if (new_dt_time - last_dt_time) < 20:
-    #    return
-    #else:
-    #    last_dt_time = new_dt_time
     new_rotation_time = utime.ticks_ms()
-    #if (new_rotation_time - last_rotation_time) < 20:
     if utime.ticks_diff(new_rotation_time, last_rotation_time) < 20:
+        machine.enable_irq(irq_state)
         return
     else:
-        last_rotation_time = new_rotation_time    
-    # </debounce>
+        last_rotation_time = new_rotation_time
+    # immediately stop motor if retraction is in progress during debug mode
+    if action_in_progress:
+        #print("ROTARY COUNTER: ", rotary_counter)
+        button_pushed = True
     # don't register more than half a rotation
     if rotary_counter <= -max_rotation_steps:
         rotary_counter = -max_rotation_steps
+        machine.enable_irq(irq_state)
         return
+    # Increment counter
     clk_state   = pin_ky040_clk.value()
     dt_state    = pin_ky040_dt.value()
-    #print("dt_interrupt    dt: ", dt_state, " clk: ", clk_state)
     if clk_state == 1 and dt_state == 0:
         rotary_counter -= 1
-        #print ("Counter ", rotary_counter)
-    #draw_rotary_encoder(rotary_counter)
-    #micropython.schedule(draw_rotary_encoder, rotary_counter)
+    machine.enable_irq(irq_state)
         
 def clear_screen():
     oled.fill(0)
@@ -277,7 +278,7 @@ def detect_presence():
 
 def draw_rotary_encoder(rotary_counter):
     global button_pushed, motor_retract_revolutions
-    micropython.mem_info()
+    #micropython.mem_info()
     circle_radius = 20
     centre_x = 100
     centre_y = 39
@@ -325,17 +326,23 @@ def draw_rotary_encoder(rotary_counter):
         oled.fill_rect(10, 48, 60, 16, 1)
         write12.text("Retracting", 18, 49, bgcolor=1, color=0)
     else:
-        oled.fill_rect(0, 48, 75, 64, 0)
-        oled.rect(10, 48, 60, 16, 1)
-        write12.text("Motor off", 20, 49, 1)
+        if action_in_progress:
+            oled.fill_rect(0, 48, 75, 64, 0)
+            oled.fill_rect(10, 48, 60, 16, 1)
+            write12.text("Retracting", 18, 49, bgcolor=1, color=0)
+        else:
+            oled.fill_rect(0, 48, 75, 64, 0)
+            oled.rect(10, 48, 60, 16, 1)
+            write12.text("Motor off", 20, 49, 1)
         # stop the motor if dial is moved into deadzone during DEBUG mode automatic retraction (which happens after switching from MANUAL to DEBUG)
-        if mode_debug and not mode_manual and action_in_progress:
-            button_pushed = True
-            motor_retract_revolutions = 0
+        #if mode_debug and not mode_manual and action_in_progress:
+        #    button_pushed = True
+        #    motor_retract_revolutions = 0
             
     #micropython.mem_info()
     #oled.show()
-    
+
+
 #mode_debug = True
 #def test_draw_rotary_encoder():
 #    while True:
@@ -382,13 +389,13 @@ def draw_toilet(frame=1):
 
 def get_battery_icon(battery_percentage):
     # based on table at https://blog.ampow.com/lipo-voltage-chart/
-    if battery_percentage >= 95:
+    if battery_percentage >= 90:
         select_battery_icon = str(5)
-    elif battery_percentage >= 75:
+    elif battery_percentage >= 70:
         select_battery_icon = str(4)
-    elif battery_percentage >= 55:
+    elif battery_percentage >= 50:
         select_battery_icon = str(3)
-    elif battery_percentage >= 35:
+    elif battery_percentage >= 30:
         select_battery_icon = str(2)
     else:
         select_battery_icon = str(1)
@@ -422,7 +429,7 @@ def motor_cleanup():
         motor_pins[pin].low()
 
 def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
-    print("HERE WE GO WOOOOO")
+    print("MOTOR SPINNING from motor_spin thread")
     global action_in_progress, button_pushed, motor_direction, motor_retract_revolutions
     button_pushed = False
     motor_retract_revolutions = 0
@@ -441,8 +448,9 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
             motor_cleanup()
             exit(1)
         if button_pushed:
+            irq_state = machine.disable_irq()
             motor_cleanup()
-            print("Motor interrupted")
+            #print("Motor interrupted from motor_spin thread")
             if motor_direction == True:
                 motor_retract_revolutions = i/steps_per_revolution
             elif motor_direction == False:
@@ -450,23 +458,24 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
             button_pushed = False
             action_in_progress = False
             motor_cleanup()
-            #_thread.exit()
+            machine.enable_irq(irq_state)
+            _thread.exit()
             break
         utime.sleep(step_sleep)
     action_in_progress = False
     motor_cleanup()
-    #_thread.exit()
+    _thread.exit()
 
 def main():
-    global action_in_progress, mode_debug, mode_manual, mode_switch, motor_direction, rotary_counter
+    global action_in_progress, mode_debug, mode_manual, mode_switch, motor_direction, motor_retract_revolutions, rotary_counter
     while True:
-        # initialise
-        motor_cleanup()
-        clear_screen()
-        #presence_detected = False
 
         # AUTO mode
         if not mode_debug and not mode_manual:
+            # initialise
+            motor_retract_revolutions = 0
+            motor_cleanup()
+            clear_screen()
             presence_detected = detect_presence()
             while presence_detected:
                 if mode_switch:
@@ -485,7 +494,7 @@ def main():
                     if time_since_presence >= action_after_seconds:
                         #perform_action = True
                         # Dewit
-                        print("CLOSING THE SEAT WOOOO")
+                        print("CLOSING THE SEAT from AUTO mode")
                         break
                     utime.sleep(polling_interval_presence)
                     time_since_presence += polling_interval_presence
@@ -507,7 +516,7 @@ def main():
                 write15.text("MANUAL mode", 0, 25)
                 oled.show()
                 # Dewit
-                print("CLOSING THE SEAT WOOOO")
+                print("CLOSING THE SEAT from MANUAL mode")
                 action_in_progress = True
                 motor_direction = True
                 thread_id = _thread.start_new_thread(motor_spin, ())
@@ -538,11 +547,13 @@ def main():
         # DEBUG mode
         if mode_debug and not mode_manual:
             # initialise
+            gc.collect()
             motor_cleanup()
             rotary_counter = 0
             oled.fill(0)
             write15.text("DEBUG mode", 0, 25)
             while True:
+                gc.collect()
                 # switch modes if button has been pushed
                 if mode_switch:
                     clear_screen()
@@ -550,10 +561,11 @@ def main():
                     break
                 # revert motor if ongoing action has been cancelled
                 if motor_retract_revolutions > 0 and not action_in_progress:
-                    rotary_counter = -4
+                    rotary_counter = 0
                     motor_direction = False
                     action_in_progress = True
                     thread_id = _thread.start_new_thread(motor_spin, (motor_retract_revolutions,))
+                    motor_retract_revolutions = 0
                 draw_status_bar()
                 #micropython.schedule(draw_rotary_encoder, rotary_counter)
                 draw_rotary_encoder(rotary_counter)
@@ -569,7 +581,7 @@ def main():
                     if mode_switch:
                         break
                     if time_since_presence >= action_after_seconds:
-                        print("Switching back to AUTO mode")
+                        print("Switching back to AUTO mode from DEBUG mode")
                         mode_debug = False
                         mode_switch = True
                         break
