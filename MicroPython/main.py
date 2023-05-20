@@ -1,5 +1,5 @@
 # General modules
-from machine import Pin, I2C, ADC
+from machine import Pin, I2C, ADC, deepsleep
 import utime
 import math
 import _thread
@@ -574,7 +574,7 @@ def show_something():
 ########################
 pin_ky040_clk.irq(trigger=Pin.IRQ_FALLING, handler=clk_interrupt, hard=True)
 pin_ky040_dt.irq(trigger=Pin.IRQ_FALLING, handler=dt_interrupt, hard=True)
-pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt, wake=machine.DEEPSLEEP, hard=True) # this is the push button
+pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt, hard=True) # this is the push button
 
 ###############
 #   Execute   #
