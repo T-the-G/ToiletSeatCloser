@@ -430,6 +430,7 @@ def motor_cleanup():
 
 def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
     print("MOTOR SPINNING from motor_spin thread")
+    gc.collect()
     global action_in_progress, button_pushed, motor_direction, motor_retract_revolutions
     button_pushed = False
     motor_retract_revolutions = 0
@@ -459,12 +460,12 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
             action_in_progress = False
             motor_cleanup()
             machine.enable_irq(irq_state)
-            _thread.exit()
+            #_thread.exit()
             break
         utime.sleep(step_sleep)
     action_in_progress = False
     motor_cleanup()
-    _thread.exit()
+    #_thread.exit()
 
 def main():
     global action_in_progress, mode_debug, mode_manual, mode_switch, motor_direction, motor_retract_revolutions, rotary_counter
@@ -547,13 +548,13 @@ def main():
         # DEBUG mode
         if mode_debug and not mode_manual:
             # initialise
-            gc.collect()
+            #gc.collect()
             motor_cleanup()
             rotary_counter = 0
             oled.fill(0)
             write15.text("DEBUG mode", 0, 25)
             while True:
-                gc.collect()
+                #gc.collect()
                 # switch modes if button has been pushed
                 if mode_switch:
                     clear_screen()
@@ -597,9 +598,9 @@ def show_something():
 ########################
 #   Setup interrupts   #
 ########################
-pin_ky040_clk.irq(trigger=Pin.IRQ_FALLING, handler=clk_interrupt)
-pin_ky040_dt.irq(trigger=Pin.IRQ_FALLING, handler=dt_interrupt)
-pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt)
+pin_ky040_clk.irq(trigger=Pin.IRQ_FALLING, handler=clk_interrupt, hard=True)
+pin_ky040_dt.irq(trigger=Pin.IRQ_FALLING, handler=dt_interrupt, hard=True)
+pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt, hard=True)
 
 
 ###############
