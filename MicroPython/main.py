@@ -18,7 +18,7 @@ micropython.alloc_emergency_exception_buf(100)
 ####################################
 # Variables that need callibration #
 ####################################
-action_after_seconds        = micropython.const(60)     # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
+action_after_seconds        = micropython.const(30)     # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
 action_revolutions            = micropython.const(2)      # stepper motor rotations required to close the toilet lid
 brightness_threshold        = micropython.const(99)     # phototransistor brightness (%) threshold for detecting restroom light
 motion_threshold            = micropython.const(5)      # difference in distance (cm) between successive measurements to detect motion 
@@ -474,36 +474,59 @@ def main():
                     motor_direction = True
                     action_in_progress = True
                     thread_id = _thread.start_new_thread(motor_spin, (motor_retract_revolutions, step_sleep_retract))
+                    oled.fill_rect(0, 48, 75, 64, 0)
+                    oled.fill_rect(10, 48, 60, 16, 1)
+                    write12.text("Retracting", 18, 49, bgcolor=1, color=0)
+                    while action_in_progress and not mode_switch:
+                        for i in 1,2,3:
+                            draw_toilet(i)
+                            oled.show()
+                            utime.sleep(1)
+                # Presence is detected
                 show_something() # DISPLAY SOMETHING NICE
                 draw_status_bar()
                 oled.show()
                 utime.sleep(polling_interval_presence)
                 presence_detected = detect_presence()
                 time_since_presence = 0
-                while not presence_detected and not action_in_progress:
-                    if mode_switch:
-                        break
+                # Presence is no longer detected
+                while not presence_detected and not action_in_progress and not mode_switch:
+                    # Dewit: After specified time of not detecting presence, close the lid
                     if time_since_presence >= action_after_seconds and not action_in_progress:
-                        # Dewit
                         print("CLOSING THE SEAT from AUTO mode")
                         action_in_progress = True
                         motor_direction = False
                         thread_id = _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_close))
                         # wait for closing to finish, then retract motor
+                        oled.fill_rect(0, 48, 75, 64, 0)
+                        oled.fill_rect(10, 48, 60, 16, 1)
+                        write12.text("Extending", 20, 49, bgcolor=1, color=0)
                         presence_detected = detect_presence()
                         while action_in_progress and not presence_detected and not mode_switch:
-                            utime.sleep(1)
-                            presence_detected = detect_presence()
+                            for i in 1,2,3:
+                                draw_toilet(i)
+                                oled.show()
+                                utime.sleep(1)
+                                presence_detected = detect_presence()
                         # closing has finished, now retract
                         if not action_in_progress and not presence_detected and not mode_switch:
                             action_in_progress = True
                             motor_direction = True
                             thread_id = _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_retract))
+                            oled.fill_rect(0, 48, 75, 64, 0)
+                            oled.fill_rect(10, 48, 60, 16, 1)
+                            write12.text("Retracting", 18, 49, bgcolor=1, color=0)
+                            while action_in_progress and not presence_detected and not mode_switch:
+                                for i in 1,2,3:
+                                    draw_toilet(i)
+                                    oled.show()
+                                    utime.sleep(1)
+                                    presence_detected = detect_presence()
                         break
                     utime.sleep(polling_interval_presence)
                     time_since_presence += polling_interval_presence
                     presence_detected = detect_presence()
-            if not mode_switch:
+            if not presence_detected and not mode_switch:
                 utime.sleep(polling_interval_standby)
                 #machine.deepsleep(micropython.const(polling_interval_standby*1000))
 
