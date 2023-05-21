@@ -53,6 +53,7 @@ This bill of materials is based on components I had lying around. It is perfectl
 | 680KΩ resistor              | 2     | Used in the 11.1V-to-5V and 11.1V-to-3V voltage dividers |
 | 220KΩ resistor              | 2     | Used in the 11.1V-to-5V and 11.1V-to-3V voltage dividers |
 | 100KΩ resistor              | 1     | Used for the SFH 300 phototransistor |
+| T-plug or Deans connector   | 1     | For connecting the battery to the mini breadboard |
 
 ## Fasteners and other mechanical parts
 
