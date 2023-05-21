@@ -19,9 +19,9 @@ from oled.fonts import ubuntu_mono_15, ubuntu_mono_20, ubuntu_condensed_12
 ####################################
 # Variables that need callibration #
 ####################################
-action_after_seconds        = micropython.const(5)     # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
-action_revolutions            = micropython.const(1)      # stepper motor rotations required to close the toilet lid
-brightness_threshold        = micropython.const(99)     # phototransistor brightness (%) threshold for detecting restroom light
+action_after_seconds        = micropython.const(10)     # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
+action_revolutions          = micropython.const(1)      # stepper motor rotations required to close the toilet lid
+brightness_threshold        = micropython.const(50)     # phototransistor brightness (%) threshold for detecting restroom light
 motion_threshold            = micropython.const(5)      # difference in distance (cm) between successive measurements to detect motion 
 polling_interval_presence   = micropython.const(1)      # seconds between polling when presence has been detected
 polling_interval_standby    = micropython.const(5)      # seconds between polling during standby
@@ -252,7 +252,7 @@ def detect_presence():
     if brightness_detected or motion_detected:
         presence_detected = True
     previous_distance = distance
-    print("Presence detected: ", presence_detected)
+    #print("Presence detected: ", presence_detected)
     #print("The distance from object is ", distance, "cm")
     #print("The brightness is ", brightness)
     return presence_detected
@@ -399,25 +399,14 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
         elif motor_direction==False:
             motor_step_counter = (motor_step_counter + 1) % 4
         if motor_cancel:
-            irq_state = machine.disable_irq()
-            motor_cleanup()
-            if motor_direction == False:
-                motor_retract_revolutions = i/steps_per_revolution
-                if motor_retract_revolutions < 0.001: # 16 bit machine epsilon rounding produces 4.88e-04
-                    motor_retract_revolutions = 0
-            elif motor_direction == True:
-                motor_retract_revolutions = revolutions - i/steps_per_revolution
-                if motor_retract_revolutions < 0.001: # 16 bit machine epsilon rounding produces 4.88e-04
-                    motor_retract_revolutions = 0
-            motor_cancel = False
-            motor_cleanup()
-            action_in_progress = False
-            machine.enable_irq(irq_state)
-            #_thread.exit()
+            #irq_state = machine.disable_irq()
             break
         utime.sleep(step_sleep)
     motor_cleanup()
-    if motor_direction == False:
+    if mode_debug and motor_cancel and rotary_counter != 0:
+        print("THATS MY BRAKE")
+        motor_retract_revolutions = 0
+    elif motor_direction == False:
         motor_retract_revolutions = i/steps_per_revolution
         if motor_retract_revolutions < 0.001: # 16 bit machine epsilon rounding produces 4.88e-04
             motor_retract_revolutions = 0
@@ -426,6 +415,9 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
         if motor_retract_revolutions < 0.001: # 16 bit machine epsilon rounding produces 4.88e-04
             motor_retract_revolutions = 0
     print("Retract revolutions: ", motor_retract_revolutions)
+    if motor_cancel:
+        motor_cancel = False
+        #machine.enable_irq(irq_state)
     action_in_progress = False
     #_thread.exit()
     
@@ -481,6 +473,7 @@ def main():
                             oled.show()
                             utime.sleep(1)
                 # Presence is detected, show welcome screen
+                oled.fill(0)
                 show_something() # DISPLAY SOMETHING NICE
                 draw_status_bar()
                 oled.show()
