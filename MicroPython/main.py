@@ -1,3 +1,4 @@
+# Using firmware rp2-pico-20230414-unstable-v1.19.1-1016-gb525f1c9e.uf2 
 # General modules
 from machine import Pin, I2C, ADC
 import utime
@@ -7,19 +8,19 @@ import micropython
 import gc
 gc.enable()
 # SSD1300 OLED display, install the following modules from PyPI:
-# micropython-ssd1306 by Stefan Lehmann
-# micropython-oled by Yeison Cardona 
+# micropython-ssd1306 v0.3 by Stefan Lehmann
+# micropython-oled v1.13 by Yeison Cardona 
 from ssd1306 import SSD1306_I2C, framebuf
 from oled import Write
 from oled.fonts import ubuntu_mono_15, ubuntu_mono_20, ubuntu_condensed_12
-# handle interrupts
-micropython.alloc_emergency_exception_buf(100)
+## handle interrupts
+#micropython.alloc_emergency_exception_buf(100)
 
 ####################################
 # Variables that need callibration #
 ####################################
-action_after_seconds        = micropython.const(30)     # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
-action_revolutions            = micropython.const(2)      # stepper motor rotations required to close the toilet lid
+action_after_seconds        = micropython.const(5)     # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
+action_revolutions            = micropython.const(1)      # stepper motor rotations required to close the toilet lid
 brightness_threshold        = micropython.const(99)     # phototransistor brightness (%) threshold for detecting restroom light
 motion_threshold            = micropython.const(5)      # difference in distance (cm) between successive measurements to detect motion 
 polling_interval_presence   = micropython.const(1)      # seconds between polling when presence has been detected
@@ -251,7 +252,7 @@ def detect_presence():
     if brightness_detected or motion_detected:
         presence_detected = True
     previous_distance = distance
-    #print("Presence detected: ", presence_detected)
+    print("Presence detected: ", presence_detected)
     #print("The distance from object is ", distance, "cm")
     #print("The brightness is ", brightness)
     return presence_detected
@@ -414,8 +415,12 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
             motor_cleanup()
             if motor_direction == False:
                 motor_retract_revolutions = i/steps_per_revolution
+                if motor_retract_revolutions < 0.001: # 16 bit machine epsilon rounding produces 4.88e-04
+                    motor_retract_revolutions = 0
             elif motor_direction == True:
-                motor_retract_revolutions -= i/steps_per_revolution
+                motor_retract_revolutions = revolutions - i/steps_per_revolution
+                if motor_retract_revolutions < 0.001: # 16 bit machine epsilon rounding produces 4.88e-04
+                    motor_retract_revolutions = 0
             button_pushed = False
             motor_cleanup()
             action_in_progress = False
@@ -424,16 +429,25 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
             break
         utime.sleep(step_sleep)
     motor_cleanup()
+    if motor_direction == False:
+        motor_retract_revolutions = i/steps_per_revolution
+        if motor_retract_revolutions < 0.001: # 16 bit machine epsilon rounding produces 4.88e-04
+            motor_retract_revolutions = 0
+    elif motor_direction == True:
+        motor_retract_revolutions = revolutions - i/steps_per_revolution
+        if motor_retract_revolutions < 0.001: # 16 bit machine epsilon rounding produces 4.88e-04
+            motor_retract_revolutions = 0
+    print("Retract revolutions: ", motor_retract_revolutions)
     action_in_progress = False
     #_thread.exit()
     
 def motor_spin_debug(step_sleep=step_sleep_retract):
     print("MOTOR SPINNING from motor_spin_debug thread")
     gc.collect()
-    global action_in_progress, button_pushed, motor_direction
+    global action_in_progress, motor_direction
     motor_step_counter = 0
     motor_cleanup()
-    while abs(rotary_counter * micropython.const(2 * math.pi / 20)) > deadzone and not button_pushed:
+    while abs(rotary_counter * micropython.const(2 * math.pi / 20)) > deadzone:
         for pin in range(0, len(motor_pins)):
             motor_pins[pin].value(step_sequence[motor_step_counter][pin])
         if motor_direction==True:
@@ -446,7 +460,6 @@ def motor_spin_debug(step_sleep=step_sleep_retract):
             exit(1)
         utime.sleep(step_sleep)
     motor_cleanup()
-    button_pushed = False
     action_in_progress = False
     #_thread.exit()
 
@@ -461,14 +474,15 @@ def main():
             motor_cleanup()
             clear_screen()
             presence_detected = detect_presence()
-            while presence_detected:
+            while presence_detected or action_in_progress:
                 # switch modes if button has been pushed
                 if mode_switch:
                     clear_screen()
                     mode_switch = False
                     break
                 # revert motor if action is ongoing and presence is detected
-                if motor_retract_revolutions > 0 and action_in_progress:
+                if action_in_progress:
+                    print("reverting motor because action is ongoing and presence is detected")
                     button_pushed = True # cancel the ongoing motor thread
                     utime.sleep(0.3)
                     motor_direction = True
@@ -482,7 +496,7 @@ def main():
                             draw_toilet(i)
                             oled.show()
                             utime.sleep(1)
-                # Presence is detected
+                # Presence is detected, show welcome screen
                 show_something() # DISPLAY SOMETHING NICE
                 draw_status_bar()
                 oled.show()
@@ -491,14 +505,14 @@ def main():
                 time_since_presence = 0
                 # Presence is no longer detected
                 while not presence_detected and not action_in_progress and not mode_switch:
-                    # Dewit: After specified time of not detecting presence, close the lid
+                    # After specified time of not detecting presence, close the lid
                     if time_since_presence >= action_after_seconds and not action_in_progress:
                         print("CLOSING THE SEAT from AUTO mode")
                         action_in_progress = True
                         motor_direction = False
                         thread_id = _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_close))
                         # wait for closing to finish, then retract motor
-                        oled.fill_rect(0, 48, 75, 64, 0)
+                        oled.fill(0)
                         oled.fill_rect(10, 48, 60, 16, 1)
                         write12.text("Extending", 20, 49, bgcolor=1, color=0)
                         presence_detected = detect_presence()
@@ -508,11 +522,19 @@ def main():
                                 oled.show()
                                 utime.sleep(1)
                                 presence_detected = detect_presence()
+                                if presence_detected: break
+                        # Exit loop if presence has been detected during close action
+                        if presence_detected:
+                            print("breaking out of auto close loop due to presence detected")
+                            time_since_presence = 0
+                            break
                         # closing has finished, now retract
+                        print("Presence: ", presence_detected, ", Action: ", action_in_progress, ", Mode switch: ", mode_switch)
                         if not action_in_progress and not presence_detected and not mode_switch:
+                            print("Starting retract action, Retract Revolutions: ", motor_retract_revolutions)
                             action_in_progress = True
                             motor_direction = True
-                            thread_id = _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_retract))
+                            thread_id = _thread.start_new_thread(motor_spin, (motor_retract_revolutions, step_sleep_retract))
                             oled.fill_rect(0, 48, 75, 64, 0)
                             oled.fill_rect(10, 48, 60, 16, 1)
                             write12.text("Retracting", 18, 49, bgcolor=1, color=0)
@@ -522,6 +544,8 @@ def main():
                                     oled.show()
                                     utime.sleep(1)
                                     presence_detected = detect_presence()
+                                    if presence_detected: break
+                        print("Breaking out of loop")
                         break
                     utime.sleep(polling_interval_presence)
                     time_since_presence += polling_interval_presence
@@ -586,6 +610,7 @@ def main():
                 if mode_switch:
                     clear_screen()
                     mode_switch = False
+                    if action_in_progress: rotary_counter = 0 # stop ongoing motor_spin_debug action 
                     break
                 # revert motor if ongoing action has been cancelled
                 if motor_retract_revolutions > 0 and not action_in_progress:
