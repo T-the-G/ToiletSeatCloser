@@ -57,7 +57,7 @@ pin_motor_4         = Pin(21, Pin.OUT)
 # MANUAL:   immediately close the lid, ignoring presence detection
 # DEBUG:    manually adjust position, and display sensor output. Useful for callibration
 action_in_progress  = False # true if the motor is being actuated
-button_pushed       = False # used to stop the motor if action is in progress
+motor_cancel        = False # used to stop the motor if action is in progress
 mode_debug          = False # true if DEBUG mode is engaged
 mode_manual         = False # true if MAUNAL mode is engaged
 mode_switch         = False # used in the main function to break out of loops
@@ -142,7 +142,7 @@ max_rotation_steps  = micropython.const(10)                 # limit how many ste
 
 def button_interrupt(pin):
     irq_state = machine.disable_irq()
-    global button_pushed, last_button_time, mode_debug, mode_manual, mode_switch
+    global motor_cancel, last_button_time, mode_debug, mode_manual, mode_switch
     # <debounce>
     new_button_time = utime.ticks_ms()
     if utime.ticks_diff(new_button_time, last_button_time) < 200:
@@ -151,7 +151,7 @@ def button_interrupt(pin):
     else:
         last_button_time = new_button_time
     # </debounce>
-    button_pushed = True
+    motor_cancel = True
     print("BUTTON PUSHED from button_interrupt")
     # switch from AUTO to MANUAL
     if not mode_debug and not mode_manual:
@@ -178,7 +178,7 @@ def button_interrupt(pin):
 
 def clk_interrupt(pin):
     irq_state = machine.disable_irq()
-    global button_pushed, last_rotation_time, rotary_counter
+    global motor_cancel, last_rotation_time, rotary_counter
     # only do something in DEBUG mode
     if not mode_debug:
         machine.enable_irq(irq_state)
@@ -192,7 +192,7 @@ def clk_interrupt(pin):
         last_rotation_time = new_rotation_time
     # immediately stop motor if retraction is in progress during debug mode
     if action_in_progress:
-        button_pushed = True
+        motor_cancel = True
     # don't register more than half a rotation
     if rotary_counter >= max_rotation_steps:
         rotary_counter = max_rotation_steps
@@ -207,7 +207,7 @@ def clk_interrupt(pin):
 
 def dt_interrupt(pin):
     irq_state = machine.disable_irq()
-    global button_pushed, last_rotation_time, rotary_counter
+    global motor_cancel, last_rotation_time, rotary_counter
     # only do something in DEBUG mode
     if not mode_debug:
         machine.enable_irq(irq_state)
@@ -221,7 +221,7 @@ def dt_interrupt(pin):
         last_rotation_time = new_rotation_time
     # immediately stop motor if retraction is in progress during debug mode
     if action_in_progress:
-        button_pushed = True
+        motor_cancel = True
     # don't register more than half a rotation
     if rotary_counter <= -max_rotation_steps:
         rotary_counter = -max_rotation_steps
@@ -258,7 +258,6 @@ def detect_presence():
     return presence_detected
 
 def draw_rotary_encoder(rotary_counter):
-    global button_pushed, motor_retract_revolutions
     circle_radius = 20
     centre_x = 100
     centre_y = 39
@@ -341,13 +340,6 @@ def draw_toilet(frame=1):
         oled.pixel(121, 20, 1)
     elif frame == 3:
         oled.rect(105, 34, 22, 3, 1)
-## test toilet animation
-#oled.contrast(0)
-#while True:
-#    for i in 1,2,3:
-#        draw_toilet(i)
-#        oled.show()
-#        utime.sleep(1)
 
 def get_battery_icon(battery_percentage):
     # based on table at https://blog.ampow.com/lipo-voltage-chart/
@@ -393,8 +385,8 @@ def motor_cleanup():
 def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
     print("MOTOR SPINNING from motor_spin thread")
     gc.collect()
-    global action_in_progress, button_pushed, motor_direction, motor_retract_revolutions
-    button_pushed = False
+    global action_in_progress, motor_cancel, motor_direction, motor_retract_revolutions
+    motor_cancel = False
     motor_retract_revolutions = 0
     i = 0
     motor_step_counter = 0
@@ -406,11 +398,7 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
             motor_step_counter = (motor_step_counter - 1) % 4
         elif motor_direction==False:
             motor_step_counter = (motor_step_counter + 1) % 4
-        else: # defensive programming
-            print( "uh oh... direction should *always* be either True or False" )
-            motor_cleanup()
-            exit(1)
-        if button_pushed:
+        if motor_cancel:
             irq_state = machine.disable_irq()
             motor_cleanup()
             if motor_direction == False:
@@ -421,7 +409,7 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
                 motor_retract_revolutions = revolutions - i/steps_per_revolution
                 if motor_retract_revolutions < 0.001: # 16 bit machine epsilon rounding produces 4.88e-04
                     motor_retract_revolutions = 0
-            button_pushed = False
+            motor_cancel = False
             motor_cleanup()
             action_in_progress = False
             machine.enable_irq(irq_state)
@@ -454,17 +442,13 @@ def motor_spin_debug(step_sleep=step_sleep_retract):
             motor_step_counter = (motor_step_counter - 1) % 4
         elif motor_direction==False:
             motor_step_counter = (motor_step_counter + 1) % 4
-        else: # defensive programming
-            print( "uh oh... direction should *always* be either True or False" )
-            motor_cleanup()
-            exit(1)
         utime.sleep(step_sleep)
     motor_cleanup()
     action_in_progress = False
     #_thread.exit()
 
 def main():
-    global action_in_progress, button_pushed, mode_debug, mode_manual, mode_switch, motor_direction, motor_retract_revolutions, rotary_counter
+    global action_in_progress, motor_cancel, mode_debug, mode_manual, mode_switch, motor_direction, motor_retract_revolutions, rotary_counter
     while True:
 
         # AUTO mode
@@ -483,7 +467,7 @@ def main():
                 # revert motor if action is ongoing and presence is detected
                 if action_in_progress:
                     print("reverting motor because action is ongoing and presence is detected")
-                    button_pushed = True # cancel the ongoing motor thread
+                    motor_cancel = True # cancel the ongoing motor thread
                     utime.sleep(0.3)
                     motor_direction = True
                     action_in_progress = True
