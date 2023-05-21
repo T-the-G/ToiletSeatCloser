@@ -43,6 +43,8 @@ pin_hcsr04_trigger  = Pin(14, Pin.OUT)
 pin_hcsr04_echo     = Pin(15, Pin.IN)
 # SFH 300 phototransistor
 pin_sfh300_adc      = ADC(26)
+# 3S LiPo battery
+pin_battery_adc     = ADC(27)
 # 28BYJ-48 stepper motor
 pin_motor_1         = Pin(18, Pin.OUT)
 pin_motor_2         = Pin(19, Pin.OUT)
@@ -356,7 +358,15 @@ def get_battery_icon(battery_percentage):
     return select_battery_icon
 
 def measure_battery():
-    battery_percentage=100
+    # 3S battery produces 12.6V when fully charged. Voltage divider equation: Vout = Vin * R2 / (R1 + R2)
+    # R1 = 680KOhm, R2 = 220KOhm, so 12.6Vin give 3.08Vout
+    # read_u16() returns a 16bit unsigned integer (between 0 and 65535)
+    # scaling factor needed to get original voltage = 12.6/65535 * 3.3/3.08 = 2.05996796e-4
+    #battery_percentage=100
+    #return battery_percentage
+    battery_voltage = pin_battery_adc.read_u16() * 2.05996796e-4
+    # Use curve-fitting to get battery percentage (see graph included in Images folder)
+    battery_percentage = 39.3*battery_voltage**3 - 1431.53*battery_voltage**2 + 17415*battery_voltage - 70675
     return battery_percentage
 
 def measure_brightness():
@@ -539,7 +549,7 @@ def main():
             oled.fill(0)
             draw_status_bar()
             write15.text("MANUAL mode", 0, 25)
-            oled.show()
+            #oled.show()
             while True:
                 if mode_switch:
                     clear_screen()
