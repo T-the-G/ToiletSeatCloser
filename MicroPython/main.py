@@ -362,12 +362,11 @@ def measure_battery():
     global battery_measurements
     # 3S battery produces 12.6V when fully charged. Voltage divider equation: Vout = Vin * R2 / (R1 + R2)
     # R1 = 680KOhm, R2 = 220KOhm, so 12.6Vin give 3.08Vout
-    # read_u16() returns a 16bit unsigned integer (between 0 and 65535)
-    # scaling factor needed to get original voltage = 12.6/65535 * 3.3/3.08 = 2.05996796e-4
-    # another way to get original voltage = 3.3/65535 * (R1 + R2) / R2      = 2.05996796e-4
-    correction_factor = micropython.const(0) #micropython.const(1.14) # my maths is flawless but my hardware is not
-    #battery_percentage=100
-    #return battery_percentage
+    # read_u16() returns a 16bit unsigned integer (between 0 and 65535, at 0V and 3.3V respectively)
+    # scaling factor needed to get original voltage = 12.6/65535 * 3.3/3.08  = 2.05996796e-4
+    # another way to calculate original voltage = 3.3/65535 * (R1 + R2) / R2 = 2.05996796e-4
+    # get correction factor by fully charging battery, then subtract measured voltage (11.46) from theoretical max voltage (12.6)
+    correction_factor = micropython.const(1.14) # my maths is flawless but my hardware is not
     battery_voltage = pin_battery_adc.read_u16() * 2.05996796e-4 + correction_factor
     # Use curve-fitting to get battery percentage (see graph included in Images folder)
     battery_percentage = 39.3*battery_voltage**3 - 1431.53*battery_voltage**2 + 17415*battery_voltage - 70673
