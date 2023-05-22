@@ -359,28 +359,30 @@ def get_battery_icon(battery_percentage):
 
 battery_measurements = [50, 50, 50, 50, 50]
 def measure_battery():
+    global battery_measurements
     # 3S battery produces 12.6V when fully charged. Voltage divider equation: Vout = Vin * R2 / (R1 + R2)
     # R1 = 680KOhm, R2 = 220KOhm, so 12.6Vin give 3.08Vout
     # read_u16() returns a 16bit unsigned integer (between 0 and 65535)
     # scaling factor needed to get original voltage = 12.6/65535 * 3.3/3.08 = 2.05996796e-4
-    global battery_measurements
+    # another way to get original voltage = 3.3/65535 * (R1 + R2) / R2      = 2.05996796e-4
+    correction_factor = micropython.const(0) #micropython.const(1.14) # my maths is flawless but my hardware is not
     #battery_percentage=100
     #return battery_percentage
-    battery_voltage = pin_battery_adc.read_u16() * 2.05996796e-4
+    battery_voltage = pin_battery_adc.read_u16() * 2.05996796e-4 + correction_factor
     # Use curve-fitting to get battery percentage (see graph included in Images folder)
-    battery_percentage = 39.3*battery_voltage**3 - 1431.53*battery_voltage**2 + 17415*battery_voltage - 70675
+    battery_percentage = 39.3*battery_voltage**3 - 1431.53*battery_voltage**2 + 17415*battery_voltage - 70673
     battery_measurements.append(battery_percentage)
     battery_measurements.pop(0)
     battery_percentage_mean = sum(battery_measurements)/len(battery_measurements)
-    #print(battery_measurements)
+    print(battery_measurements)
     return battery_percentage_mean
 
 def test():
     while True:
         battery_percentage = measure_battery()
-        draw_status_bar()
+        #draw_status_bar()
         print("Battery %: ", battery_percentage)
-        oled.show()
+        #oled.show()
         utime.sleep(2)
 
 def measure_brightness():
