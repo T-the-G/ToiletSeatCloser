@@ -1,5 +1,4 @@
 # Using firmware rp2-pico-20230414-unstable-v1.19.1-1016-gb525f1c9e.uf2 
-# General modules
 from machine import Pin, I2C, ADC
 import utime
 import math
@@ -13,8 +12,6 @@ gc.enable()
 from ssd1306 import SSD1306_I2C, framebuf
 from oled import Write
 from oled.fonts import ubuntu_mono_20, ubuntu_mono_15, ubuntu_condensed_12
-## handle interrupts
-#micropython.alloc_emergency_exception_buf(100)
 
 ####################################
 # Variables that need callibration #
@@ -28,7 +25,7 @@ polling_interval_debug      = micropython.const(0.25)   # seconds between pollin
 polling_interval_presence   = micropython.const(1)      # seconds between polling when presence has been detected
 polling_interval_standby    = micropython.const(5)      # seconds between polling during standby
 previous_distance           = micropython.const(165)    # initialise typical distance (cm) measured when nobody is in the restroom
-voltage_correction_factor   = micropython.const(1.14)   # my maths is flawless but my hardware is not; set this to zero, fully charge the battery, measure voltage (see measure_battery()) (11.46V), and subtract this from theoretical max voltage (12.6)
+voltage_correction_factor   = micropython.const(1.14)   # my maths is flawless but my hardware is not; set this to zero, fully charge the battery, measure voltage (see measure_battery()) (11.46V), and subtract this from theoretical max voltage (12.6) to get correction factor (1.14V)
 
 ###################
 #   Define pins   #
@@ -91,13 +88,6 @@ class battery_status:
         53: [20, 1099511627775, 1099511627775, 1099511627775, 824633720832, 824633720832, 17179869168, 12884901936, 64424509488, 64424509488, 12884901936, 17179869168, 824633720832, 824633720832, 1099511627775],
         }
 battery = Write(oled, battery_status)
-## test battery status icons
-#while True:
-#    for i in range(1, 6):
-#        oled.fill(0)
-#        battery.text(str(i), 108, 0)
-#        oled.show()
-#        utime.sleep(0.5)
 
 # Lightbulb icon
 class lightbulb_icon:
@@ -373,7 +363,6 @@ def measure_battery():
     battery_measurements.append(battery_percentage)
     battery_measurements.pop(0)
     battery_percentage_mean = sum(battery_measurements)/len(battery_measurements)
-    #print(battery_measurements)
     return battery_percentage_mean
 
 def test_battery():
@@ -486,7 +475,7 @@ def main():
                     utime.sleep(0.1)
                     motor_direction = True
                     action_in_progress = True
-                    thread_id = _thread.start_new_thread(motor_spin, (motor_retract_revolutions, step_sleep_retract))
+                    _thread.start_new_thread(motor_spin, (motor_retract_revolutions, step_sleep_retract))
                     oled.fill_rect(0, 48, 75, 64, 0)
                     oled.fill_rect(10, 48, 60, 16, 1)
                     write12.text("Retracting", 18, 49, bgcolor=1, color=0)
@@ -496,6 +485,7 @@ def main():
                             draw_toilet(i)
                             oled.show()
                             utime.sleep(1)
+                            if mode_switch: break
                 # Presence is detected, show the welcome screen
                 oled.fill(0)
                 write20.text("Welcome to", 0, 20)
@@ -512,7 +502,7 @@ def main():
                         print("CLOSING THE SEAT from AUTO mode")
                         action_in_progress = True
                         motor_direction = False
-                        thread_id = _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_close))
+                        _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_close))
                         # wait for closing to finish, then retract motor
                         oled.fill(0)
                         oled.fill_rect(10, 48, 60, 16, 1)
@@ -524,7 +514,7 @@ def main():
                                 oled.show()
                                 utime.sleep(1)
                                 presence_detected = detect_presence()
-                                if presence_detected: break
+                                if presence_detected or mode_switch: break
                         # Exit loop if presence has been detected during close action
                         if presence_detected:
                             print("breaking out of auto close loop due to presence detected")
@@ -536,7 +526,7 @@ def main():
                             print("Starting retract action, Retract Revolutions: ", motor_retract_revolutions)
                             action_in_progress = True
                             motor_direction = True
-                            thread_id = _thread.start_new_thread(motor_spin, (motor_retract_revolutions, step_sleep_retract))
+                            _thread.start_new_thread(motor_spin, (motor_retract_revolutions, step_sleep_retract))
                             oled.fill_rect(0, 48, 75, 64, 0)
                             oled.fill_rect(10, 48, 60, 16, 1)
                             write12.text("Retracting", 18, 49, bgcolor=1, color=0)
@@ -546,8 +536,7 @@ def main():
                                     oled.show()
                                     utime.sleep(1)
                                     presence_detected = detect_presence()
-                                    if presence_detected: break
-                        print("Breaking out of loop")
+                                    if presence_detected or mode_switch: break
                         break
                     draw_status_bar()
                     utime.sleep(polling_interval_presence)
@@ -575,7 +564,7 @@ def main():
                     print("Interrupt occured during AUTO mode action, retracting")
                     action_in_progress = True
                     motor_direction = True
-                    thread_id = _thread.start_new_thread(motor_spin, (motor_retract_revolutions, step_sleep_retract))
+                    _thread.start_new_thread(motor_spin, (motor_retract_revolutions, step_sleep_retract))
                     oled.fill_rect(0, 48, 75, 64, 0)
                     oled.fill_rect(10, 48, 60, 16, 1)
                     write12.text("Retracting", 18, 49, bgcolor=1, color=0)
@@ -593,7 +582,7 @@ def main():
                 print("CLOSING THE SEAT from MANUAL mode")
                 action_in_progress = True
                 motor_direction = False
-                thread_id = _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_close))
+                _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_close))
                 oled.fill_rect(0, 48, 75, 64, 0)
                 oled.fill_rect(10, 48, 60, 16, 1)
                 write12.text("Extending", 20, 49, bgcolor=1, color=0)
@@ -607,7 +596,7 @@ def main():
                 if not action_in_progress and not mode_switch:
                     action_in_progress = True
                     motor_direction = True
-                    thread_id = _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_retract))
+                    _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_retract))
                 oled.fill_rect(0, 48, 75, 64, 0)
                 oled.fill_rect(10, 48, 60, 16, 1)
                 write12.text("Retracting", 18, 49, bgcolor=1, color=0)
@@ -616,6 +605,7 @@ def main():
                         draw_toilet(i)
                         oled.show()
                         utime.sleep(1)
+                        if mode_switch: break
                 mode_manual = False
                 break
 
@@ -639,7 +629,7 @@ def main():
                     rotary_counter = 0
                     motor_direction = True
                     action_in_progress = True
-                    thread_id = _thread.start_new_thread(motor_spin, (motor_retract_revolutions,))
+                    _thread.start_new_thread(motor_spin, (motor_retract_revolutions,))
                     motor_retract_revolutions = 0
                 # rotate motor if rotary encoder has been turned beyond the deadzone
                 rotary_angle = rotary_counter * micropython.const(2 * math.pi / 20)
@@ -647,12 +637,12 @@ def main():
                     motor_direction = False
                     action_in_progress = True
                     print("starting new closing motion")
-                    thread_id = _thread.start_new_thread(motor_spin_debug, (step_sleep_close,))
+                    _thread.start_new_thread(motor_spin_debug, (step_sleep_close,))
                 elif rotary_angle < -deadzone and not action_in_progress:
                     motor_direction = True
                     action_in_progress = True
                     print("starting new retracting motion")
-                    thread_id = _thread.start_new_thread(motor_spin_debug, (step_sleep_retract,))
+                    _thread.start_new_thread(motor_spin_debug, (step_sleep_retract,))
                 draw_status_bar()
                 draw_rotary_encoder(rotary_counter)
                 oled.show()
@@ -675,11 +665,6 @@ def main():
                     time_since_presence += polling_interval_debug
                     presence_detected = detect_presence()
 
-def show_something():
-    write20.text("Hello", 15, 15)
-    write20.text("World!", 15, 35)
-    oled.show()
-
 ########################
 #   Setup interrupts   #
 ########################
@@ -690,8 +675,4 @@ pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt, hard=True) # 
 ###############
 #   Execute   #
 ###############
-#test_battery()
 main()
-smile.char('smile', 0, 0)
-#arrows.char('arrows-alt-h', 45, 0)
-oled.show()

@@ -1,3 +1,5 @@
+$fa=0.1;
+$fs=0.1;
 
 // Mounting holes are 10cm apart along X and Y
 mounting_holes_x_distance=100;
@@ -126,8 +128,8 @@ module backplate() {
                         polygon(points);
                     }
                 }
-                // square hole cutout to hold the mini-breadboard ny the notch
-                translate([8.5/4,2.01,backplate_thickness+0.75]) cube([4.5,2,5.5]);
+                // square hole cutout to hold the mini-breadboard by the notch
+                translate([8.5/4,2.01,backplate_thickness+0.75]) cube([4.5,2,6]);
             }
             // m3 mounting supports for front axle mount
             translate([gearbox_x_offset+0,gearbox_z_offset-distance_between_gears-root_height/2,0]) 
