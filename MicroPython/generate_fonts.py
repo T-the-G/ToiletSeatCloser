@@ -28,4 +28,13 @@ font = gen.generate_oled_font("Font Awesome 6 Free, Regular", 15, characters)
 # horizontal arrows icon (maybe looks better than ruler)
 characters = {'arrows-alt-h': '\uf337'}
 font = gen.generate_oled_font("Font Awesome 6 Free, Regular", 15, characters)
+#print(font)
+
+# toilet icon (frontal)
+characters = {'toilet': '\uf7d8'}
+font = gen.generate_oled_font("Font Awesome 6 Free, Regular", 17, characters)
+#print(font)
+
+characters = {'smile': '\uf118'}
+font = gen.generate_oled_font("Font Awesome 6 Free, Regular", 17, characters)
 print(font)
