@@ -1,8 +1,5 @@
 m3_hole_radius=1.5;
 
-$fa=0.1;
-$fs=0.1;
-
 module mini_breadboard_mounting_bracket(breadboard_thickness=9, overhang=2) {
     color("YellowGreen",0.5)
     difference() {

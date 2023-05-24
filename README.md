@@ -41,7 +41,7 @@ This bill of materials is based on components I had lying around. It is perfectl
 | SFH 300 phototransistor     | 1     | For detecting the ambient light level |
 | HC-SR04 ultrasonic distance sensor  | 1     | For detecting movement |
 | KY-040 rotary encoder       | 1     | For manual control of the system |
-| SSD1300 OLED display        | 1     | Displays information about the device status, 0.96 inch, 128 x 64 resolution |
+| SSD1306 OLED display        | 1     | Displays information about the device status, 0.96 inch, 128 x 64 resolution |
 | 3S LiPo battery             | 1     | Rated at 52Ah @ 11.1V (57.72Wh) |
 | LiPo battery charger        | 1     | Used to charge the LiPo battery |
 | DC-DC buck stepdown module  | 1     | Provides steady voltage for the RPi Pico via USB, input 6-20V, output 5V 3A |
@@ -73,3 +73,5 @@ Note that the screw hole position/diameter on electronic components may vary bet
 | M1.4\*6     | 4           | For mounting the HC-SR04 ultrasonic distance sensor to the electronics backplate |
 | Spring      | 1           | For pushing the axle back into place after manual adjustment, diameter 7mm, length 12.5mm |
 | Cable sleeve  | 1         | Woven sheath that wraps around a 5-10mm bundle of cables, length approximately 50cm |
+| 608RS bearing | 1         | Deep groove ball bearing which sits between the main gear and axle, bore diameter 8mm, external diameter 22mm, width 7mm |
+| Lubricant   | 1           | For the epicyclic gearbox |

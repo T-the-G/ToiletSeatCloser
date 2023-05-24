@@ -4,14 +4,11 @@ axle_mount_thickness=14;
 root_height=25;
 m3_hole_radius=1.5;
 
-$fa=0.1;
-$fs=0.1;
-
 module rear_axle_mount() {
     difference() {
         translate([0,0,axle_mount_thickness]) mirror([0,0,1]) plain_axle_mount();
         // hole for power cables ziptie
-        translate([-4.5,-5,-0.5]) cube([1.5,3,axle_mount_thickness+1]);
+        translate([-5,-5,-0.5]) cube([1.5,3,axle_mount_thickness+1]);
         translate([-7,-5,axle_mount_thickness-5]) cube([3,3,6]);
         // parallel holes for ziptie cable management
         translate([5,-5,-0.5]) cube([3,1.5,axle_mount_thickness+1]);

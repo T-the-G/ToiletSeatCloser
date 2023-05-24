@@ -1,6 +1,3 @@
-$fa=0.1;
-$fs=0.1;
-
 // Mounting holes are 10cm apart along X and Y
 mounting_holes_x_distance=100;
 mounting_holes_y_distance=100;

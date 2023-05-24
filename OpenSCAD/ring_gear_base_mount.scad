@@ -1,6 +1,3 @@
-$fa = 0.1;
-$fs = 0.1;
-
 use <epicyclic_gear_subassembly.scad>
 
 m3_hole_radius=1.5;
