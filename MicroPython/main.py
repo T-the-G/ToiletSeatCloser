@@ -48,7 +48,8 @@ pin_battery_adc     = ADC(27)
 pin_motor_1         = Pin(18, Pin.OUT)
 pin_motor_2         = Pin(19, Pin.OUT)
 pin_motor_3         = Pin(20, Pin.OUT)
-pin_motor_4         = Pin(21, Pin.OUT)
+#pin_motor_4         = Pin(21, Pin.OUT) # I somehow broke this pin
+pin_motor_4         = Pin(22, Pin.OUT)
 
 ##########################################
 # Glabal variables for the state machine #

@@ -21,7 +21,8 @@ backplate_width=64;
 backplate_height=90;
 
 // Variables from full_assembly.scad
-distance_between_gears=29.0385+0.15+0.05;
+axle_must_be_thinner_because_I_messed_up_tolerances_correction = -0.1;
+distance_between_gears=29.0385+0.15+0.05+axle_must_be_thinner_because_I_messed_up_tolerances_correction;
 gearbox_z_offset=60;
 gearbox_x_offset=0;
 
