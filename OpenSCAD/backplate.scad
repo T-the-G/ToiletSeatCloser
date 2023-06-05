@@ -21,8 +21,7 @@ backplate_width=64;
 backplate_height=90;
 
 // Variables from full_assembly.scad
-axle_must_be_thinner_because_I_messed_up_tolerances_correction = -0.1;
-distance_between_gears=29.0385+0.15+0.05+axle_must_be_thinner_because_I_messed_up_tolerances_correction;
+distance_between_gears=29.0385-1.5;
 gearbox_z_offset=60;
 gearbox_x_offset=0;
 
@@ -140,7 +139,7 @@ module backplate() {
                 ring_gear_base_mount_hole_supports();
         }
         // hole for the power cables from the battery, and for the 6 wires going to the stepper driver board
-        translate([backplate_width-12-6,30.7615+6,-0.5]) cube([5,16,backplate_height+1]);
+        translate([backplate_width-12-6,40,-0.5]) cube([5,16,backplate_height+1]);
         // parallel holes for ziptie cable management on top left web
         translate([-10,backplate_height-0,-0.5]) cube([1.5,3,backplate_thickness+1]);
         translate([0,backplate_height-0,-0.5]) cube([1.5,3,backplate_thickness+1]);

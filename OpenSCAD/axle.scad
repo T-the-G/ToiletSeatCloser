@@ -14,7 +14,7 @@ module axle() {
         // spacer
         translate([0,0,12+1]) cylinder(h=1.5, r=6);
         // friction fit onto bearing
-        translate([0,0,14.5]) cylinder(h=7, r=4);
+        translate([0,0,14.5]) cylinder(h=7, r=4.2);
     }
 }
 

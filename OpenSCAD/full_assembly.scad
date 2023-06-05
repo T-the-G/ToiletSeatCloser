@@ -14,13 +14,14 @@ use <backplate.scad>
 backplate_thickness=3;
 use <epicyclic_gear_subassembly.scad>
 use <main_gear.scad>
-distance_between_gears=29.0385+0.15+0.05;
-use <ring_gear_base_mount.scad>
+distance_between_gears=29.0385-1.5;
+//use <ring_gear_base_mount.scad>
 mount_length = 30; // distance from wall
-use <front_axle_mount.scad>
+//use <front_axle_mount.scad>
 use <rear_axle_mount.scad>
 use <axle.scad>
 use <breadboard_mounting_bracket.scad>
+use <ring_gear_and_front_axle_mount.scad>
 
 // Assembly variables
 gearbox_x_offset=0;
@@ -63,7 +64,8 @@ translate([gearbox_x_offset-16.5-1.6,-mount_length,gearbox_z_offset])
 translate([gearbox_x_offset,-mount_length,gearbox_z_offset]) rotate(a=90, v=[0,1,0]) 
     epicyclic_gear_subassembly(include_base=false);
 translate([gearbox_x_offset,-mount_length,gearbox_z_offset]) rotate(a=90, v=[0,1,0]) 
-    ring_gear_base_mount();
+    //ring_gear_base_mount();
+    ring_gear_and_front_axle_mount();
 
 // Motor with 1 stage of the epicyclic gear
 translate([gearbox_x_offset-16.5,-mount_length,gearbox_z_offset]) rotate(a=90, v=[0,1,0]) {
@@ -89,9 +91,11 @@ translate([gearbox_x_offset+16.5+2+3.5,-main_gear_y_offset,gearbox_z_offset-dist
 translate([gearbox_x_offset+16.5+2,-main_gear_y_offset,gearbox_z_offset-distance_between_gears]) 
     rotate(a=90, v=[0,1,0]) rotate(a=-3-3, v=[0,0,1]) main_gear_and_arm();
 
+/*
 // Front axle mount
 translate([gearbox_x_offset+0,0,gearbox_z_offset-distance_between_gears]) 
     rotate(a=90, v=[0,1,0]) front_axle_mount();
+*/
 
 // Rear axle mount
 translate([gearbox_x_offset+50,0,gearbox_z_offset-distance_between_gears]) 

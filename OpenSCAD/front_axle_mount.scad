@@ -58,27 +58,25 @@ translate([root_height/2,0.5,axle_mount_thickness*3/4]) rotate(a=90, v=[1,0,0]) 
 */
 
 // standoffs for mounting the ULN2003 driver board using M3x4 screws
-module standoff(support=false) {
+module standoff(support=3) {
     color("Crimson", 0.2)
     difference() {
         // main body
-        if (support==true) cylinder(h=6, d=5);
-        else cylinder(h=3, d=5);
+        cylinder(h=support, d=5);
         // cutout m3 hole
-        if (support==true) translate([0,0,-1]) cylinder(h=3+1, r=m3_hole_radius);
-        else translate([0,0,-0.5]) cylinder(h=3+1, r=m3_hole_radius);
+        translate([0,0,-1]) cylinder(h=3+1, r=m3_hole_radius);
     }
 }
 //standoff();
 
-module front_axle_mount() {
+module front_axle_mount(standoff_offset=0) {
     //color("PaleGreen",0.7)
     union() {
         // add the standoffs for the ULN2003 driver board
-        translate([-3.5,-2.75,-3]) standoff();
+        translate([standoff_offset-3.5,-2.75,-3]) standoff();
         //translate([-2.75,-2.75,-3]) standoff();
-        translate([-3.5+23.5+3,-2.75,-3]) standoff(support=true);
-        translate([-3.5,-2.75-26.5-3,-3]) standoff(support=true);
+        translate([standoff_offset-3.5+23.5+3,-2.75,-3]) standoff(support=3+axle_mount_thickness);
+        translate([standoff_offset-3.5,-2.75-26.5-3,-3]) standoff();
         // main body using plain_axle_mount
         difference() {
             plain_axle_mount();
