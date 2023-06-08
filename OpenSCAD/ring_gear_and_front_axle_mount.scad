@@ -13,7 +13,7 @@ module ring_gear_and_front_axle_mount() {
         // ring gear base mount
         ring_gear_base_mount();
         // front axle mount
-        translate([distance_between_gears, mount_length, 0]) front_axle_mount(standoff_offset=1.6);
+        translate([distance_between_gears, mount_length, 0]) front_axle_mount(standoff_offset=2);
         // bridge the gap between them 
         difference() {
             translate([mount_side/2-0.1,0,0]) cube([3.5,mount_length,axle_mount_thickness]);

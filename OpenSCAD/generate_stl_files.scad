@@ -14,8 +14,9 @@ use <rear_axle_mount.scad>
 use <ring_gear_base_mount.scad>
 use <gears.scad>
 use <ring_gear_and_front_axle_mount.scad>
+use <standoffs.scad>
 
-//axle();                                             // axle.stl, quantity 1
+axle();                                             // axle.stl, quantity 1
 //backplate();                                        // backplate.stl, quantity 1
 //mini_breadboard_mounting_bracket();                 // breadboard_mounting_bracket.stl, quantity 3
 //electronics_backplate();                            // electronics_backplate.stl, quantity 1
@@ -29,3 +30,5 @@ use <ring_gear_and_front_axle_mount.scad>
 //// New gears, because the downloaded ones are terrible
 //epicyclic_sun_gear();                               //sun_gear.stl, quantity 1
 //epicyclic_planet_gear();                            //planet_gear.stl, quantity 6
+//m4_standoff();                                      // m4_standoff_2.8mm.stl, quantity 2
+//m4_standoff(height=3.2);                            // m4_standoff_3.2mm.stl, quantity 1

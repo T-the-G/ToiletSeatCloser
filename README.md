@@ -21,14 +21,15 @@ This bill of materials is based on components I had lying around. It is perfectl
 | Backplate             | 1     |
 | Breadboard mounting bracket   | 3     |
 | Electronics backplate | 1     |
-| Front axle mount      | 1     |
-| Gearbox cover         | 2     |
+| Gearbox cover         | 1     |
+| m4 standoff 2.8mm     | 2     |
+| m4 standoff 3.2mm     | 1     |
 | Main gear and arm     | 1     |
 | Planet carrier        | 2     |
 | Planet gear           | 6     |
 | Rear axle mount       | 1     |
 | Ring gear base        | 1     |
-| Ring gear base mount  | 1     |
+| Ring gear and front axle mount      | 1     |
 | Sun gear              | 1     |
 
 ## Electronics
@@ -44,14 +45,13 @@ This bill of materials is based on components I had lying around. It is perfectl
 | SSD1306 OLED display        | 1     | Displays information about the device status, 0.96 inch, 128 x 64 resolution |
 | 3S LiPo battery             | 1     | Rated at 52Ah @ 11.1V (57.72Wh) |
 | LiPo battery charger        | 1     | Used to charge the LiPo battery |
-| DC-DC buck stepdown module  | 1     | Provides steady voltage for the RPi Pico via USB, input 6-20V, output 5V 3A |
+| MP1584EN DC-DC buck module  | 1     | Provides steady voltage for the RPi Pico and the stepper motor, input 4.5-28V, output 0.8-20V 3A |
 | Mini breadboard             | 1     | Used as a power supply, has 170 pinholes, measures approximately 46\*35\*9mm |
 | Small breadboard            | 1     | Used as a motherboard, has 400 pinholes, measures approximately 82\*54\*9mm |
 | 22AWG wires                 | 1     | For connecting components on the breadboards |
-| Breadboard pin headers      | 2     | For connecting the DC-DC stepdown module to the mini breadboard |
-| 1MΩ resistor                | 1     | Used in the 11.1V-to-5V voltage divider |
-| 680KΩ resistor              | 2     | Used in the 11.1V-to-5V and 11.1V-to-3V voltage dividers |
-| 220KΩ resistor              | 2     | Used in the 11.1V-to-5V and 11.1V-to-3V voltage dividers |
+| Breadboard pin headers      | 4     | For connecting the MP1584EN DC-DC stepdown module to the mini breadboard |
+| 680KΩ resistor              | 1     | Used in the 11.1V-to-3V voltage divider |
+| 220KΩ resistor              | 1     | Used in the 11.1V-to-3V voltage divider |
 | 100KΩ resistor              | 1     | Used for the SFH 300 phototransistor |
 | T-plug or Deans connector   | 1     | For connecting the battery to the mini breadboard |
 
@@ -63,7 +63,7 @@ Note that the screw hole position/diameter on electronic components may vary bet
 | :---        | :----       | :---        |
 | Suction cup | 8           | For attaching the backplates to a wall, 4cm diameter, M4\*10 thread  |
 | M4\*35      | 3           | For holding the 28BYJ stepper motor and epicyclic gearbox in place  |
-| M4 washer   | 4           | To space out the M4 screws holding the stepper motor and gearbox in place |
+| M3 washer   | 12          | To spread the load of the m3 screws on the backplate |
 | M3\*25      | 4           | For connecting the front and rear axle mounts to the backplate      |
 | M3\*18      | 4           | For connecting the epicyclic ring gear base to the backplate        |
 | M3\*16      | 4           | For connecting the front and rear axle mounts to the backplate      |
