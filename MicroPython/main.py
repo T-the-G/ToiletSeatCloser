@@ -17,15 +17,15 @@ from oled.fonts import ubuntu_mono_20, ubuntu_mono_15, ubuntu_condensed_12
 # Variables that need callibration #
 ####################################
 action_after_seconds        = micropython.const(600)    # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
-action_revolutions          = micropython.const(1)      # stepper motor rotations required to close the toilet lid
-brightness_threshold        = micropython.const(99)     # phototransistor brightness (%) threshold for detecting restroom light
+action_revolutions          = micropython.const(17)     # stepper motor rotations required to close the toilet lid
+brightness_threshold        = micropython.const(10)     # phototransistor brightness (%) threshold for detecting restroom light
 motion_threshold            = micropython.const(5)      # difference in distance (cm) between successive measurements to detect motion 
 oled_dim                    = micropython.const(100)    # value between 0 (dimmest) and 255 (brightest) to dim the oled display
 polling_interval_debug      = micropython.const(0.25)   # seconds between polling (and screen refresh) when in DEBUG mode
 polling_interval_presence   = micropython.const(1)      # seconds between polling when presence has been detected
 polling_interval_standby    = micropython.const(5)      # seconds between polling during standby
-previous_distance           = micropython.const(165)    # initialise typical distance (cm) measured when nobody is in the restroom
-step_sleep_close            = micropython.const(0.003)  # seconds between stepper motor steps during lid close action
+previous_distance           = micropython.const(50)     # initialise typical distance (cm) measured when nobody is in the restroom
+step_sleep_close            = micropython.const(0.002)  # seconds between stepper motor steps during lid close action
 step_sleep_retract          = micropython.const(0.002)  # seconds between stepper motor steps during retract action
 voltage_correction_factor   = micropython.const(1.14)   # my maths is flawless but my hardware is not; set this to zero, fully charge the battery, measure voltage (see measure_battery()) (11.46V), and subtract this from theoretical max voltage (12.6) to get correction factor (1.14V)
 
