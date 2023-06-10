@@ -147,7 +147,6 @@ def button_interrupt(pin):
         last_button_time = new_button_time
     # </debounce>
     motor_cancel = True
-    print("BUTTON PUSHED from button_interrupt")
     # switch from AUTO to MANUAL
     if not mode_debug and not mode_manual:
         mode_manual = True
@@ -164,7 +163,7 @@ def button_interrupt(pin):
     # Defensive programming
     else:
         motor_cleanup()
-        write15.text("State machine error", 0, 0)
+        write12.text("State machine error", 0, 0)
         oled.show()
         print("State machine error")
         machine.enable_irq(irq_state)
@@ -369,9 +368,7 @@ def measure_battery():
 def test_battery():
     while True:
         battery_percentage = measure_battery()
-        #draw_status_bar()
         print("Battery %: ", battery_percentage)
-        #oled.show()
         utime.sleep(2)
 
 def measure_brightness():
@@ -398,7 +395,6 @@ def motor_cleanup():
         motor_pins[pin].low()
 
 def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
-    print("MOTOR SPINNING from motor_spin thread")
     gc.collect()
     global action_in_progress, motor_cancel, motor_direction, motor_retract_revolutions
     motor_cancel = False
@@ -418,8 +414,8 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
             break
         utime.sleep(step_sleep)
     motor_cleanup()
+    # If action is ongoing when switching into DEBUG mode, rotating the encoder cancels the action
     if mode_debug and motor_cancel and rotary_counter != 0:
-        print("THATS MY BRAKE")
         motor_retract_revolutions = 0
     elif motor_direction == False:
         motor_retract_revolutions = i/steps_per_revolution
@@ -427,7 +423,6 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
         motor_retract_revolutions = revolutions - i/steps_per_revolution
     if motor_retract_revolutions < 0.001: # 16 bit machine epsilon rounding produces 4.88e-04
         motor_retract_revolutions = 0
-    print("Retract revolutions: ", motor_retract_revolutions)
     if motor_cancel:
         motor_cancel = False
         #machine.enable_irq(irq_state)
@@ -435,7 +430,6 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
     #_thread.exit()
     
 def motor_spin_debug(step_sleep=step_sleep_retract):
-    print("MOTOR SPINNING from motor_spin_debug thread")
     gc.collect()
     global action_in_progress, motor_direction
     motor_step_counter = 0
@@ -471,7 +465,6 @@ def main():
                     break
                 # revert motor if action is ongoing and presence is detected
                 if action_in_progress:
-                    print("reverting motor because action is ongoing and presence is detected")
                     motor_cancel = True # cancel the ongoing motor thread
                     utime.sleep(0.1)
                     motor_direction = True
@@ -500,7 +493,6 @@ def main():
                 while not presence_detected and not action_in_progress and not mode_switch:
                     # After specified time of not detecting presence, close the lid
                     if time_since_presence >= action_after_seconds and not action_in_progress:
-                        print("CLOSING THE SEAT from AUTO mode")
                         action_in_progress = True
                         motor_direction = False
                         _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_close))
@@ -518,13 +510,10 @@ def main():
                                 if presence_detected or mode_switch: break
                         # Exit loop if presence has been detected during close action
                         if presence_detected:
-                            print("breaking out of auto close loop due to presence detected")
                             time_since_presence = 0
                             break
                         # closing has finished, now retract
-                        print("Presence: ", presence_detected, ", Action: ", action_in_progress, ", Mode switch: ", mode_switch)
                         if not action_in_progress and not presence_detected and not mode_switch:
-                            print("Starting retract action, Retract Revolutions: ", motor_retract_revolutions)
                             action_in_progress = True
                             motor_direction = True
                             _thread.start_new_thread(motor_spin, (motor_retract_revolutions, step_sleep_retract))
@@ -544,8 +533,8 @@ def main():
                     time_since_presence += polling_interval_presence
                     presence_detected = detect_presence()
             if not presence_detected and not mode_switch:
-                utime.sleep(polling_interval_standby)
-                #machine.lightsleep(micropython.const(polling_interval_standby*1000))
+                #utime.sleep(polling_interval_standby)
+                machine.lightsleep(micropython.const(polling_interval_standby*1000))
 
         # MANUAL mode
         if not mode_debug and mode_manual:
@@ -562,7 +551,6 @@ def main():
                     break
                 # if interrupt occured while AUTO mode action was ongoing, revert motor, then switch back to AUTO mode
                 if motor_retract_revolutions > 0:
-                    print("Interrupt occured during AUTO mode action, retracting")
                     action_in_progress = True
                     motor_direction = True
                     _thread.start_new_thread(motor_spin, (motor_retract_revolutions, step_sleep_retract))
@@ -576,11 +564,10 @@ def main():
                             oled.show()
                             utime.sleep(1)
                             if mode_switch: break
-                    print("Switching back to AUTO mode after interrupt occured during AUTO mode action")
                     mode_manual = False
+                    # revert to AUTO mode
                     break
                 # Close the lid
-                print("CLOSING THE SEAT from MANUAL mode")
                 action_in_progress = True
                 motor_direction = False
                 _thread.start_new_thread(motor_spin, (action_revolutions, step_sleep_close))
@@ -637,12 +624,10 @@ def main():
                 if rotary_angle > deadzone and not action_in_progress:
                     motor_direction = False
                     action_in_progress = True
-                    print("starting new closing motion")
                     _thread.start_new_thread(motor_spin_debug, (step_sleep_close,))
                 elif rotary_angle < -deadzone and not action_in_progress:
                     motor_direction = True
                     action_in_progress = True
-                    print("starting new retracting motion")
                     _thread.start_new_thread(motor_spin_debug, (step_sleep_retract,))
                 draw_status_bar()
                 draw_rotary_encoder(rotary_counter)
@@ -650,6 +635,7 @@ def main():
                 utime.sleep(polling_interval_debug)
                 presence_detected = detect_presence()
                 time_since_presence = 0
+                # after specified time of not detecting presence, revert to AUTO mode
                 while not presence_detected and not abs(rotary_angle) > deadzone:
                     rotary_angle = rotary_counter * micropython.const(2 * math.pi / 20)
                     draw_status_bar()
@@ -658,7 +644,6 @@ def main():
                     if mode_switch:
                         break
                     if time_since_presence >= action_after_seconds:
-                        print("Switching back to AUTO mode from DEBUG mode")
                         mode_debug = False
                         mode_switch = True
                         break
