@@ -1,10 +1,11 @@
 # Toilet Seat Closer
-Lever that closes the toilet seat
+
 <figure>
   <img src="/Images/timelapse.gif"
     width="300"
     alt="Timelapse of the toilet seat closer, the entire action takes about 2.5 minutes">
 </figure>
+Lever that closes the toilet seat 
 
 # Table of Contents  
 
@@ -34,6 +35,15 @@ Electronics assembly
 
 ---
 
+<p float="left">
+  <img src="/Images/toilet seat closer_bb.png" height="200" />
+  <img src="/Images/toilet seat closer_schem.png" height="200" /> 
+  <img src="/Images/3S LiPo capacity vs voltage.PNG" height="200" />
+</p>
+Electronics diagrams
+
+---
+
 <figure>
     <img src="/Images/oled_demo.gif"
          width="600"
@@ -45,11 +55,14 @@ Oled display in action
 
 There are 3 modes which can be cycled through by pressing the rotary encoder button; AUTO, MANUAL, and DEBUG. When powering up the system by connecting to a battery, it goes into AUTO mode. 
 
+###### AUTO mode
 In AUTO mode, a light sensor and a distance sensor are used to determine presence in the restroom. Some time after presence is no longer detected (`action_after_seconds`), the lever actuates, and the toilet lid is closed. If presence is detected or the button is pushed during the action, the lever will begin retracting immediately.
 
-Pressing the button switches to MANUAL mode, which immediately closes the lid, ignoring presence detection. If the MANUAL action completes without having pressed the button again, the system reverts to AUTO mode.
+###### MANUAL mode
+Pressing the button while in AUTO mode switches the system to MANUAL mode, which immediately closes the lid, ignoring presence detection. If the MANUAL action completes without having pressed the button again, the system reverts to AUTO mode.
 
-Pressing the button while in MANUAL mode switches the system to DEBUG mode, where sensor output is shown, and the motor can be actuated manually using the rotary encoder. This mode is useful for callibrating the variables `brightness_threshold`, `motion_threshold`, and `previous_distance`, as well as setting the lever's starting position. When switching from MANUAL to DEBUG mode, the motor will begin retracting the lever back to the starting position. This automatic retraction can be cancelled by turning the rotary encoder. If the button is pushed while the motor is off, or presence is not detected for `action_after_seconds`, the system switches to AUTO mode.
+###### DEBUG mode
+Pressing the button while in MANUAL mode switches the system to DEBUG mode, where sensor output is shown, and the motor can be actuated manually using the rotary encoder. This mode is useful for calibrating the variables `brightness_threshold`, `motion_threshold`, and `previous_distance`, as well as setting the lever's starting position. When switching from MANUAL to DEBUG mode, the motor will begin retracting the lever back to the starting position. This automatic retraction can be cancelled by turning the rotary encoder. If the button is pushed while the motor is off, or presence is not detected for `action_after_seconds`, the system switches to AUTO mode.
 
 # Bill of Materials
 
@@ -124,3 +137,5 @@ Note that the screw hole position/diameter on electronic components may vary bet
 - Use something cooler (and with less friction) than a two-stage planetary gear, such as a cycloidal drive, radial vector reducer, or split-ring compound planetary gear
 - Use prototyping boards instead of breadboards, for better cable management
 - Add a suction cup to the lever, to allow it to pull the lid back up, thus leaving only the seat down
+- Use KiCad instead of Fritzing for the electronics diagrams
+- Use the `uasyncio` library for a cleaner `main()` control loop
