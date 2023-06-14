@@ -1,13 +1,55 @@
 # Toilet Seat Closer
 Lever that closes the toilet seat
+<figure>
+  <img src="/Images/timelapse.gif"
+    width="300"
+    alt="Timelapse of the toilet seat closer, the entire action takes about 2.5 minutes">
+</figure>
 
 # Table of Contents  
 
+- [Gallery](#gallery)
+- [How it works](#how-it-works)
 - [Bill of Materials](#bill-of-materials)  
   - [3D-printed parts](#3d-printed-parts)  
   - [Electronics](#electronics)
   - [Fasteners and other mechanical parts](#fasteners-and-other-mechanical-parts)
+- [Future improvements](#future-improvements)
 
+# Gallery
+
+<p float="left">
+  <img src="/Images/mechanics_assembly.jpg" height="333" />
+  <img src="/Images/mechanics_assembly_openSCAD.PNG" height="333" /> 
+</p>
+Mechanics assembly
+
+---
+
+<p float="left">
+  <img src="/Images/electronics_assembly.jpg" height="333" />
+  <img src="/Images/electronics_assembly_openSCAD.PNG" height="333" /> 
+</p>
+Electronics assembly
+
+---
+
+<figure>
+    <img src="/Images/oled_demo.gif"
+         width="600"
+         alt="The oled screen when cycling between the three modes; AUTO, MANUAL, and DEBUG">
+</figure>
+Oled display in action
+
+# How it works
+
+There are 3 modes which can be cycled through by pressing the rotary encoder button; AUTO, MANUAL, and DEBUG. When powering up the system by connecting to a battery, it goes into AUTO mode. 
+
+In AUTO mode, a light sensor and a distance sensor are used to determine presence in the restroom. Some time after presence is no longer detected (`action_after_seconds`), the lever actuates, and the toilet lid is closed. If presence is detected or the button is pushed during the action, the lever will begin retracting immediately.
+
+Pressing the button switches to MANUAL mode, which immediately closes the lid, ignoring presence detection. If the MANUAL action completes without having pressed the button again, the system reverts to AUTO mode.
+
+Pressing the button while in MANUAL mode switches the system to DEBUG mode, where sensor output is shown, and the motor can be actuated manually using the rotary encoder. This mode is useful for callibrating the variables `brightness_threshold`, `motion_threshold`, and `previous_distance`, as well as setting the lever's starting position. When switching from MANUAL to DEBUG mode, the motor will begin retracting the lever back to the starting position. This automatic retraction can be cancelled by turning the rotary encoder. If the button is pushed while the motor is off, or presence is not detected for `action_after_seconds`, the system switches to AUTO mode.
 
 # Bill of Materials
 
@@ -72,6 +114,13 @@ Note that the screw hole position/diameter on electronic components may vary bet
 | M2\*4       | 4           | For mounting the SSD1300 OLED display to the electronics backplate  |
 | M1.4\*6     | 4           | For mounting the HC-SR04 ultrasonic distance sensor to the electronics backplate |
 | Spring      | 1           | For pushing the axle back into place after manual adjustment, diameter 7mm, length 12.5mm |
-| Cable sleeve  | 1         | Woven sheath that wraps around a 5-10mm bundle of cables, length approximately 50cm |
+| Cable sleeve  | 1         | Woven sheath that wraps around a 5-10mm bundle of cables, length approximately 70cm |
 | 608RS bearing | 1         | Deep groove ball bearing which sits between the main gear and axle, bore diameter 8mm, external diameter 22mm, width 7mm |
 | Lubricant   | 1           | For the epicyclic gearbox |
+
+# Future improvements
+
+- Use a more powerful motor, such as the NEMA 23, for faster movement
+- Use something cooler (and with less friction) than a two-stage planetary gear, such as a cycloidal drive, radial vector reducer, or split-ring compound planetary gear
+- Use prototyping boards instead of breadboards, for better cable management
+- Add a suction cup to the lever, to allow it to pull the lid back up, thus leaving only the seat down
