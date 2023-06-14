@@ -163,6 +163,7 @@ def button_interrupt(pin):
     # Defensive programming
     else:
         motor_cleanup()
+        oled.fill(0)
         write12.text("State machine error", 0, 0)
         oled.show()
         print("State machine error")
@@ -612,7 +613,7 @@ def main():
                     mode_switch = False
                     if action_in_progress: rotary_counter = 0 # stop ongoing motor_spin_debug action 
                     break
-                # revert motor if ongoing action has been cancelled
+                # revert motor if ongoing MANUAL action has been cancelled by switching to DEBUG
                 if motor_retract_revolutions > 0 and not action_in_progress:
                     rotary_counter = 0
                     motor_direction = True
