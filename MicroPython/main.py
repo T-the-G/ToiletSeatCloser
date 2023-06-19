@@ -6,7 +6,7 @@ import _thread
 import micropython
 import gc
 gc.enable()
-# SSD1300 OLED display, install the following modules from PyPI:
+# SSD1306 OLED display, install the following modules from PyPI:
 # micropython-ssd1306 v0.3 by Stefan Lehmann
 # micropython-oled v1.13 by Yeison Cardona 
 from ssd1306 import SSD1306_I2C, framebuf
@@ -14,7 +14,7 @@ from oled import Write
 from oled.fonts import ubuntu_mono_20, ubuntu_mono_15, ubuntu_condensed_12
 
 ####################################
-# Variables that need callibration #
+# Variables that need calibration #
 ####################################
 action_after_seconds        = micropython.const(600)    # seconds to wait after presence is no longer detected to close the lid or revert to AUTO mode
 action_revolutions          = micropython.const(17)     # stepper motor rotations required to close the toilet lid
@@ -25,14 +25,20 @@ polling_interval_debug      = micropython.const(0.25)   # seconds between pollin
 polling_interval_presence   = micropython.const(1)      # seconds between polling when presence has been detected
 polling_interval_standby    = micropython.const(5)      # seconds between polling during standby
 previous_distance           = micropython.const(50)     # initialise typical distance (cm) measured when nobody is in the restroom
-step_sleep_close            = micropython.const(0.002)  # seconds between stepper motor steps during lid close action
+step_sleep_close            = micropython.const(0.0025) # seconds between stepper motor steps during lid close action
 step_sleep_retract          = micropython.const(0.002)  # seconds between stepper motor steps during retract action
-voltage_correction_factor   = micropython.const(1.14)   # my maths is flawless but my hardware is not; set this to zero, fully charge the battery, measure voltage (see measure_battery()) (11.46V), and subtract this from theoretical max voltage (12.6) to get correction factor (1.14V)
+# 3S battery produces 12.6V when fully charged. Voltage divider equation: Vout = Vin * R2 / (R1 + R2)
+# R1 = 680KOhm, R2 = 220KOhm, so 12.6Vin give 3.08Vout
+# read_u16() returns a 16bit unsigned integer (between 0 and 65535, at 0V and 3.3V respectively)
+# original voltage Vin = read_u16() * 12.6/65535 * 3.3/3.08
+# another way to calculate original voltage = read_u16() * 3.3/65535 * (R1 + R2) / R2
+voltage_conversion_factor   = micropython.const(3.3/65535 * (680+220)/220)
+voltage_correction_factor   = micropython.const(0)   # my maths is flawless but my hardware is not; set this to zero, fully charge the battery, measure voltage (see measure_battery()) (11.46V), and subtract this from theoretical max voltage (12.6) to get correction factor (1.14V)
 
 ###################
 #   Define pins   #
 ###################
-# SSD1300 OLED I2C
+# SSD1306 OLED I2C
 pin_oled_sda        = Pin(16)
 pin_oled_scl        = Pin(17)
 # KY-040 rotary encoder
@@ -59,7 +65,7 @@ pin_motor_4         = Pin(22, Pin.OUT)
 # Pushing the button cycles between three modes:
 # AUTO:     poll sensors and close lid after presence is no longer detected
 # MANUAL:   immediately close the lid, ignoring presence detection
-# DEBUG:    manually adjust position, and display sensor output. Useful for callibration
+# DEBUG:    manually adjust position, and display sensor output. Useful for calibration
 action_in_progress  = False # true if the motor is being actuated
 motor_cancel        = False # used to stop the motor if action is in progress
 mode_debug          = False # true if DEBUG mode is engaged
@@ -353,12 +359,7 @@ def get_battery_icon(battery_percentage):
 battery_measurements = [50, 50, 50, 50, 50]
 def measure_battery():
     global battery_measurements
-    # 3S battery produces 12.6V when fully charged. Voltage divider equation: Vout = Vin * R2 / (R1 + R2)
-    # R1 = 680KOhm, R2 = 220KOhm, so 12.6Vin give 3.08Vout
-    # read_u16() returns a 16bit unsigned integer (between 0 and 65535, at 0V and 3.3V respectively)
-    # scaling factor needed to get original voltage = 12.6/65535 * 3.3/3.08  = 2.05996796e-4
-    # another way to calculate original voltage = 3.3/65535 * (R1 + R2) / R2 = 2.05996796e-4
-    battery_voltage = pin_battery_adc.read_u16() * 2.05996796e-4 + voltage_correction_factor
+    battery_voltage = pin_battery_adc.read_u16() * voltage_conversion_factor + voltage_correction_factor
     # Use curve-fitting to get battery percentage (see graph included in Images folder)
     battery_percentage = 39.3*battery_voltage**3 - 1431.53*battery_voltage**2 + 17415*battery_voltage - 70673
     battery_measurements.append(battery_percentage)
@@ -369,6 +370,7 @@ def measure_battery():
 def test_battery():
     while True:
         battery_percentage = measure_battery()
+        print(battery_measurements)
         print("Battery %: ", battery_percentage)
         utime.sleep(2)
 
@@ -614,6 +616,8 @@ def main():
                     if action_in_progress: rotary_counter = 0 # stop ongoing motor_spin_debug action 
                     break
                 # revert motor if ongoing MANUAL action has been cancelled by switching to DEBUG
+                while motor_retract_revolutions > 0 and action_in_progress:
+                    utime.sleep(0.01)
                 if motor_retract_revolutions > 0 and not action_in_progress:
                     rotary_counter = 0
                     motor_direction = True
@@ -662,4 +666,5 @@ pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt, hard=True) # 
 ###############
 #   Execute   #
 ###############
+#test_battery()
 main()
