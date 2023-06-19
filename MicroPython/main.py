@@ -33,7 +33,7 @@ step_sleep_retract          = micropython.const(0.002)  # seconds between steppe
 # original voltage Vin = read_u16() * 12.6/65535 * 3.3/3.08
 # another way to calculate original voltage = read_u16() * 3.3/65535 * (R1 + R2) / R2
 voltage_conversion_factor   = micropython.const(3.3/65535 * (680+220)/220)
-voltage_correction_factor   = micropython.const(0)   # my maths is flawless but my hardware is not; set this to zero, fully charge the battery, measure voltage (see measure_battery()) (11.46V), and subtract this from theoretical max voltage (12.6) to get correction factor (1.14V)
+voltage_correction_factor   = micropython.const(0.01)   # my maths is flawless but my hardware is not; set this to zero, fully charge the battery, measure voltage (see measure_battery()) (12.59V), and subtract this from theoretical max voltage (12.6) to get correction factor (0.01V)
 
 ###################
 #   Define pins   #
@@ -666,5 +666,5 @@ pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt, hard=True) # 
 ###############
 #   Execute   #
 ###############
-#test_battery()
+test_battery()
 main()
