@@ -666,5 +666,4 @@ pin_ky040_sw.irq(trigger=Pin.IRQ_RISING, handler=button_interrupt, hard=True) # 
 ###############
 #   Execute   #
 ###############
-test_battery()
 main()
