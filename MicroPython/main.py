@@ -31,9 +31,9 @@ step_sleep_retract          = micropython.const(0.002)  # seconds between steppe
 # R1 = 680KOhm, R2 = 220KOhm, so 12.6Vin give 3.08Vout
 # read_u16() returns a 16bit unsigned integer (between 0 and 65535, at 0V and 3.3V respectively)
 # original voltage Vin = read_u16() * 12.6/65535 * 3.3/3.08
-# another way to calculate original voltage = read_u16() * 3.3/65535 * (R1 + R2) / R2
+# another way to calculate original voltage = read_u16() * 3.3/65535 * (R1 + R2)/R2
 voltage_conversion_factor   = micropython.const(3.3/65535 * (680+220)/220)
-voltage_correction_factor   = micropython.const(0.10)   # my maths is flawless but my hardware is not; set this to zero, fully charge the battery, measure voltage (see measure_battery()) (12.5V), and subtract this from theoretical max voltage (12.6) to get correction factor (0.10V)
+voltage_correction_factor   = micropython.const(0.15)   # my maths is flawless but my hardware is not; set this to zero, fully charge the battery, measure voltage (see measure_battery()) (12.45V), and subtract this from theoretical max voltage (12.6) to get an initial correction factor (0.15V)
 
 ###################
 #   Define pins   #
