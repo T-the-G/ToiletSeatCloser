@@ -388,7 +388,7 @@ def measure_distance():
         signaloff = utime.ticks_us()
     while pin_hcsr04_echo.value() == 1:
         signalon = utime.ticks_us()
-    timepassed = signalon - signaloff
+    timepassed = utime.ticks_diff(signalon, signaloff)
     distance = timepassed * 0.01715 # (0.0343 cm per us)/2 = 0.01715
     #print("The distance from object is ", distance, "cm")
     return(distance)
@@ -399,7 +399,7 @@ def motor_cleanup():
 
 def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
     gc.collect()
-    global action_in_progress, motor_cancel, motor_direction, motor_retract_revolutions
+    global action_in_progress, motor_cancel, motor_retract_revolutions
     motor_cancel = False
     motor_retract_revolutions = 0
     i = 0
@@ -434,7 +434,7 @@ def motor_spin(revolutions=1, step_sleep=step_sleep_retract):
     
 def motor_spin_debug(step_sleep=step_sleep_retract):
     gc.collect()
-    global action_in_progress, motor_direction
+    global action_in_progress
     motor_step_counter = 0
     motor_cleanup()
     while abs(rotary_counter * micropython.const(2 * math.pi / 20)) > deadzone:
