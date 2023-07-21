@@ -33,7 +33,7 @@ step_sleep_retract          = micropython.const(0.002)  # seconds between steppe
 # original voltage Vin = read_u16() * 12.6/65535 * 3.3/3.08
 # another way to calculate original voltage = read_u16() * 3.3/65535 * (R1 + R2)/R2
 voltage_conversion_factor   = micropython.const(3.3/65535 * (680+220)/220)
-voltage_correction_factor   = micropython.const(0.15)   # my maths is flawless but my hardware is not; set this to zero, fully charge the battery, measure voltage (see measure_battery()) (12.45V), and subtract this from theoretical max voltage (12.6) to get an initial correction factor (0.15V)
+voltage_correction_factor   = micropython.const(0.50)   # my maths is flawless but my hardware is not; set this to zero, hook everything up, measure voltage with a multimeter and with the ADC (example: 11.97 and 11.47), the difference is the correction factor
 
 ###################
 #   Define pins   #
@@ -532,7 +532,8 @@ def main():
                                     if presence_detected or mode_switch: break
                         break
                     draw_status_bar()
-                    utime.sleep(polling_interval_presence)
+                    #utime.sleep(polling_interval_presence)
+                    machine.lightsleep(micropython.const(polling_interval_presence*1000))
                     time_since_presence += polling_interval_presence
                     presence_detected = detect_presence()
             if not presence_detected and not mode_switch:
